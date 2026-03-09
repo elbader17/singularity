@@ -22,7 +22,7 @@ Singularity is a persistent memory system designed to maximize the autonomy of A
 ### Build
 
 ```bash
-git clone <repo>
+git clone https://github.com/elbader17/singularity
 cd singularity
 go build -o singularity ./cmd/singularity
 ```
