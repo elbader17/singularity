@@ -11,6 +11,14 @@ Singularity is a state memory and orchestration engine for AI agents. Its role i
 - One request must contain all necessary information
 - Think deeply before acting
 
+### 1.1 Extended Thinking (MANDATORY)
+- **Take your time to reason** - This is not a race
+- **Think step by step** through the problem before acting
+- **Consider edge cases** and alternatives before executing
+- **Plan extensively** in your internal reasoning, then act
+- A single well-thought response is better than multiple shallow ones
+- Use the full context window to reason about the solution
+
 ### 2. Strict Isolation
 - Orchestrator only sees high-level summaries
 - Sub-agents only see code for their specific task
