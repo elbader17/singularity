@@ -225,7 +225,7 @@
                         SINGULARITY
                     </h1>
                     <p class="font-mono text-base-400 max-w-xl text-sm leading-relaxed border-l-2 border-neon-purple pl-4">
-                        Motor de orquestación para agentes autónomos. Patrón Blackboard nativo. Lee y escribe el estado sin comunicación directa. Aislamiento absoluto.
+                        Motor de orquestación para agentes autónomos. Patrón Blackboard nativo. <strong class="text-white font-bold">Optimizado estratégicamente para modelos de IA que facturan por <i>request</i> (no por token).</strong> Lee y escribe el estado sin comunicación directa. Aislamiento absoluto.
                     </p>
                     <div class="flex flex-wrap gap-4 font-mono text-sm">
                         <a href="#install" class="bg-neon-yellow text-black px-6 py-3 font-bold hover:bg-white transition-colors flex items-center gap-2 shadow-brutal-white border border-black">
@@ -238,7 +238,7 @@
                 </div>
 
                 <!-- TTY Terminal -->
-                <div class="bg-base-900 border-2 border-base-600 shadow-brutal-green p-1 relative font-mono text-sm overflow-hidden group">
+                <div id="install" class="scroll-mt-32 bg-base-900 border-2 border-base-600 shadow-brutal-green p-1 relative font-mono text-sm overflow-hidden group">
                     <div class="absolute top-0 right-0 p-2 text-base-600 group-hover:text-neon-green transition-colors">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
                     </div>
@@ -268,13 +268,13 @@
         <div class="w-full border-y-2 border-base-700 bg-base-800 mt-32 overflow-hidden py-3 font-mono text-xs uppercase text-base-400 whitespace-nowrap flex items-center">
             <div class="animate-[marquee_20s_linear_infinite] inline-block">
                 <span>[ ZERO PING-PONG ]</span> <span class="mx-4 text-neon-purple">///</span>
+                <span>[ COST OPTIMIZED ]</span> <span class="mx-4 text-neon-purple">///</span>
+                <span>[ PER-REQUEST EFFICIENCY ]</span> <span class="mx-4 text-neon-purple">///</span>
                 <span>[ DAG ORCHESTRATION ]</span> <span class="mx-4 text-neon-purple">///</span>
                 <span>[ ISOLATED SUB-AGENTS ]</span> <span class="mx-4 text-neon-purple">///</span>
                 <span>[ DEEP ARCHIVE ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ BADGERDB STORAGE ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ ZERO PING-PONG ]</span> <span class="mx-4 text-neon-purple">///</span>
+                <span>[ COST OPTIMIZED ]</span> <span class="mx-4 text-neon-purple">///</span>
                 <span>[ DAG ORCHESTRATION ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ ISOLATED SUB-AGENTS ]</span> <span class="mx-4 text-neon-purple">///</span>
             </div>
         </div>
 
@@ -289,28 +289,28 @@
                 <div class="bg-base-800 p-6 brutal-border">
                     <div class="text-neon-green mb-4">01 // ACT_BRAIN</div>
                     <h3 class="text-white font-bold text-xl mb-2 font-display">Cerebro Activo</h3>
-                    <p class="text-sm text-base-400">Estado del proyecto inyectado sin costo de API. Contexto inmediato 100% disponible.</p>
+                    <p class="text-sm text-base-400">Estado del proyecto inyectado sin costo de API externo. Contexto inmediato 100% disponible offline.</p>
                 </div>
                 <div class="bg-base-800 p-6 brutal-border">
                     <div class="text-neon-purple mb-4">02 // DEEP_ARCH</div>
                     <h3 class="text-white font-bold text-xl mb-2 font-display">Archivo Profundo</h3>
-                    <p class="text-sm text-base-400">Contexto histórico bajo demanda. Mantiene la ventana de tokens limpia y letal.</p>
+                    <p class="text-sm text-base-400">Contexto histórico bajo demanda. Mantiene la ventana de tokens enfocada y evita alucinaciones por exceso de ruido.</p>
                 </div>
                 <div class="bg-base-800 p-6 brutal-border">
                     <div class="text-neon-yellow mb-4">03 // DAG_TASK</div>
                     <h3 class="text-white font-bold text-xl mb-2 font-display">Orquestación DAG</h3>
-                    <p class="text-sm text-base-400">Dependencias estructurales en grafos. El caos se somete a la topología matemática.</p>
+                    <p class="text-sm text-base-400">Dependencias estructurales en grafos. El caos de la inteligencia generativa se somete a la topología matemática estricta.</p>
                 </div>
                 <div class="bg-base-800 p-6 brutal-border">
                     <div class="text-white mb-4">04 // ISO_ENV</div>
                     <h3 class="text-white font-bold text-xl mb-2 font-display">Agentes Aislados</h3>
-                    <p class="text-sm text-base-400">Zero contaminación cruzada. Cada sub-agente recibe solo las variables de su ecuación.</p>
+                    <p class="text-sm text-base-400">Zero contaminación cruzada. Cada sub-agente recibe solo las variables de su ecuación, aumentando la precisión en modelos de razonamiento.</p>
                 </div>
                 <div class="bg-base-800 p-6 brutal-border lg:col-span-2 relative overflow-hidden">
                     <div class="absolute right-0 top-0 w-32 h-32 bg-neon-red/10 blur-3xl rounded-full"></div>
                     <div class="text-neon-red mb-4 relative z-10">05 // ZRO_PING</div>
-                    <h3 class="text-white font-bold text-xl mb-2 font-display relative z-10">Ejecución en un Hit</h3>
-                    <p class="text-sm text-base-400 max-w-lg relative z-10">Un request = acción completa. Eliminación total de queries exploratorias. Deducción y mutación de estado en una sola pasada.</p>
+                    <h3 class="text-white font-bold text-xl mb-2 font-display relative z-10">Ejecución en un Hit <span class="text-neon-yellow text-sm ml-2">[COST OPTIMIZED]</span></h3>
+                    <p class="text-sm text-base-400 max-w-lg relative z-10">Un request = acción completa. <strong class="text-white font-bold">Vital para planes de IA que facturan por petición, no por volumen de tokens.</strong> Eliminación radical de "charlas exploratorias" (ping-pong) con la API. Deducción algorítmica y mutación de estado en una sola pasada.</p>
                 </div>
             </div>
         </div>
