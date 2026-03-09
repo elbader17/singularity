@@ -98,6 +98,7 @@ func installOpenCode() {
 
 	existingStr := strings.TrimSpace(string(existingContent))
 
+	// Configuración del servidor MCP
 	singularityConfig := fmt.Sprintf(`{
       "type": "local",
       "command": ["%s"],
@@ -123,6 +124,9 @@ func installOpenCode() {
   }
 }`, binPath)
 	}
+
+	// Agregar/actualizar configuración del agente orchestrator
+	finalConfig = ensureOrchestratorAgent(finalConfig, binPath)
 
 	if err := os.WriteFile(configFile, []byte(finalConfig), 0644); err != nil {
 		fmt.Printf("Error: no se pudo escribir config: %v\n", err)
@@ -238,4 +242,147 @@ func printManualConfig() {
 
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
+}
+
+// ensureOrchestratorAgent ensures the orchestrator agent has all required tools for sub-agent management
+func ensureOrchestratorAgent(content, binPath string) string {
+	// Required tools for sub-agent support
+	requiredTools := []string{
+		"singularity_spawn_sub_agent",
+		"singularity_get_sub_agent_task",
+		"singularity_complete_sub_agent_task",
+		"singularity_switch_agent",
+		"singularity_list_tasks",
+		"singularity_get_active_brain",
+		"singularity_commit_world_state",
+		"singularity_fetch_deep_context",
+	}
+
+	// Check if orchestrator agent already exists
+	if strings.Contains(content, `"orchestrator"`) {
+		// Agent exists, check if it has all required tools
+		missingTools := []string{}
+		for _, tool := range requiredTools {
+			if !strings.Contains(content, `"`+tool+`"`) {
+				missingTools = append(missingTools, tool)
+			}
+		}
+
+		if len(missingTools) > 0 {
+			// Add missing tools to existing agent
+			content = addMissingToolsToAgent(content, missingTools)
+		}
+		return content
+	}
+
+	// Agent doesn't exist, add it with all required tools
+	return addOrchestratorAgent(content, binPath, requiredTools)
+}
+
+func addOrchestratorAgent(content, binPath string, tools []string) string {
+	// Build tools section
+	toolsStr := `"read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "webfetch": true,`
+
+	for _, tool := range tools {
+		toolsStr += fmt.Sprintf("\n        \"%s\": true,", tool)
+	}
+	// Remove trailing comma
+	toolsStr = strings.TrimSuffix(toolsStr, ",")
+
+	orchestratorAgent := fmt.Sprintf(`  "agent": {
+    "orchestrator": {
+      "description": "Implements features using SOLID principles with a rigorous 6-phase workflow",
+      "mode": "primary",
+      "prompt": "{file:/home/eduardo/project/singularity/prompts/orchestrator.md}",
+      "temperature": 0.2,
+      "tools": {
+        %s
+      }
+    }
+  }`, toolsStr)
+
+	lines := strings.Split(content, "\n")
+	var result []string
+
+	if len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "}" {
+		// Find the last non-empty line
+		lastIdx := len(lines) - 1
+		for lastIdx > 0 && strings.TrimSpace(lines[lastIdx]) == "" {
+			lastIdx--
+		}
+
+		// Add comma to the last real line if it doesn't have one
+		if lastIdx >= 0 {
+			trimmed := strings.TrimSpace(lines[lastIdx])
+			if !strings.HasSuffix(trimmed, ",") && !strings.HasSuffix(trimmed, "{") {
+				lines[lastIdx] = lines[lastIdx] + ","
+			}
+		}
+
+		// Insert agent section before the closing brace
+		for i := 0; i < len(lines)-1; i++ {
+			result = append(result, lines[i])
+		}
+		result = append(result, orchestratorAgent)
+		result = append(result, "}")
+	} else if len(lines) == 0 || (len(lines) == 1 && strings.TrimSpace(lines[0]) == "") {
+		// Empty file - create complete config with agent
+		result = append(result, "{")
+		result = append(result, orchestratorAgent)
+		result = append(result, "}")
+	} else {
+		result = lines
+		result = append(result, orchestratorAgent)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+func addMissingToolsToAgent(content string, missingTools []string) string {
+	lines := strings.Split(content, "\n")
+	var result []string
+	inTools := false
+	toolsCloseIdx := -1
+
+	for i, line := range lines {
+		result = append(result, line)
+
+		if strings.Contains(line, `"tools"`) {
+			inTools = true
+		}
+
+		if inTools && strings.TrimSpace(line) == "}" {
+			toolsCloseIdx = i
+			break
+		}
+	}
+
+	if toolsCloseIdx > 0 {
+		// Remove the closing brace
+		result = result[:len(result)-1]
+
+		// Add comma to previous line if needed
+		prevIdx := len(result) - 1
+		prevLine := strings.TrimSpace(result[prevIdx])
+		if !strings.HasSuffix(prevLine, ",") {
+			result[prevIdx] = result[prevIdx] + ","
+		}
+
+		// Add missing tools
+		indent := "        "
+		for _, tool := range missingTools {
+			result = append(result, fmt.Sprintf(`%s"%s": true,`, indent, tool))
+		}
+
+		// Add closing brace
+		result = append(result, "}")
+	}
+
+	return strings.Join(result, "\n")
 }

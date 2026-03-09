@@ -694,6 +694,19 @@ func (s *Server) handleGetSubAgentTask(ctx context.Context, request mcp.CallTool
 	taskData, _ = task.ToJSON()
 	s.db.Set(taskKey, taskData)
 
+	// Banner visual para indicar sub-agente en ejecución
+	banner := `🎯 **SUB-AGENTE ACTIVO**
+
+**ID:** %s
+**Tarea:** %s
+**Descripción:** %s
+
+📋 Completa la tarea y usa "commit_world_state" cuando termines.
+
+---`
+
+	banner = fmt.Sprintf(banner, subAgentID, task.Title, task.Description)
+
 	response := models.SubAgentTaskResponse{
 		Success:     true,
 		TaskID:      task.ID,
@@ -704,7 +717,10 @@ func (s *Server) handleGetSubAgentTask(ctx context.Context, request mcp.CallTool
 	}
 
 	responseJSON, _ := json.Marshal(response)
-	return mcp.NewToolResultText(string(responseJSON)), nil
+
+	// Combinar banner con respuesta JSON
+	result := banner + "\n\n```json\n" + string(responseJSON) + "\n```"
+	return mcp.NewToolResultText(result), nil
 }
 
 func (s *Server) handleCompleteSubAgentTask(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -821,6 +837,17 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 
 		task, _ := models.TaskFromJSON(taskData)
 
+		// Banner visual para switch a sub-agente
+		banner := `🎯 **SUB-AGENTE ACTIVO**
+
+**ID:** %s | **Tarea:** %s
+
+✅ Modo sub-agente activado. Ejecuta tu tarea y usa "commit_world_state".
+
+---`
+
+		banner = fmt.Sprintf(banner, subAgentID, task.Title)
+
 		type SwitchResponse struct {
 			Success     bool   `json:"success"`
 			Mode        string `json:"mode"`
@@ -844,8 +871,16 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 		}
 
 		responseJSON, _ := json.Marshal(response)
-		return mcp.NewToolResultText(string(responseJSON)), nil
+		result := banner + "\n\n```json\n" + string(responseJSON) + "\n```"
+		return mcp.NewToolResultText(result), nil
 	}
+
+	// Banner para volver a orchestrator
+	banner := `🎼 **MODO ORQUESTADOR**
+
+✅ Has vuelto al modo Orquestador. Usa "spawn_sub_agent" para nuevas tareas.
+
+---`
 
 	type SwitchResponse struct {
 		Success bool   `json:"success"`
@@ -860,5 +895,6 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 	}
 
 	responseJSON, _ := json.Marshal(response)
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	result := banner + "\n\n```json\n" + string(responseJSON) + "\n```"
+	return mcp.NewToolResultText(result), nil
 }
