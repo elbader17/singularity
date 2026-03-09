@@ -1,0 +1,34 @@
+# Binarios
+singularity
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Output de compilador
+*.test
+*.out
+
+# Go workspace
+go.work
+
+# Dependencias vendor (opcional)
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Datos de Singularity
+.singularity/
+
+# Logs
+*.log
