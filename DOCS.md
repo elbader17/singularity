@@ -1,100 +1,98 @@
-# Documentación Técnica - Singularity
+# Singularity - Technical Documentation
 
-## Índice
+## Table of Contents
 
-1. [Filosofía](#filosofía)
-2. [Arquitectura](#arquitectura)
-3. [Almacenamiento](#almacenamiento)
-4. [Protocolo MCP](#protocolo-mcp)
-5. [Modelo de Datos](#modelo-de-datos)
-6. [Flujos de Ejecución](#flujos-de-ejecución)
-
----
-
-## Filosofía
-
-### El Request es Rey
-
-El costo principal en APIs modernas de IA no es el número de tokens sino la latencia y el número de requests. Singularity optimiza para:
-
-- **Minimizar requests**: Cada request debe contener toda la información necesaria
-- **Pensar antes de actuar**: El agente debe razonar internamente antes de emitir salida
-- **Consolidar al terminar**: `commit_world_state` atomiciza todo el trabajo
-
-### Patrón Blackboard
-
-Los agentes no se comunican directamente. En su lugar:
-
-1. **Escriben en la pizarra** (BadgerDB)
-2. **Leen de la pizarra** (contexto inicial)
-3. **Mueren** (sesión termina)
-
-Esto elimina la necesidad de mantener estado en memoria entre interacciones.
+1. [Philosophy](#philosophy)
+2. [Architecture](#architecture)
+3. [Storage](#storage)
+4. [MCP Protocol](#mcp-protocol)
+5. [Data Model](#data-model)
+6. [Execution Flows](#execution-flows)
 
 ---
 
-## Arquitectura
+## Philosophy
+
+### The Request is King
+
+The main cost in modern AI APIs is not token count but latency and number of requests. Singularity optimizes for:
+
+- **Minimize requests**: Each request must contain all necessary information
+- **Think before acting**: Agent must reason internally before emitting output
+- **Consolidate on finish**: `commit_world_state` atomizes all work
+
+### Blackboard Pattern
+
+Agents don't communicate directly. Instead:
+
+1. **Write to the blackboard** (BadgerDB)
+2. **Read from the blackboard** (initial context)
+3. **Die** (session ends)
+
+This eliminates the need to maintain state in memory between interactions.
+
+---
+
+## Architecture
 
 ```
-                    ┌─────────────────┐
-                    │   OpenCode      │
-                    │   (Cliente)     │
-                    └────────┬────────┘
-                             │ stdio
-                    ┌────────▼────────┐
-                    │  MCP Server     │
-                    │  (mcp-go)       │
-                    └────────┬────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-┌────────▼────────┐  ┌──────▼──────┐  ┌────────▼────────┐
-│   Storage       │  │   Models    │  │   Protocol     │
-│  (BadgerDB)     │  │  (State)    │  │  (Injector)    │
-└─────────────────┘  └─────────────┘  └────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                     OpenCode (Client)                   │
+└────────────────────────┬────────────────────────────────┘
+                         │ stdio
+┌────────────────────────▼────────────────────────────────┐
+│                      MCP Server (mcp-go)                │
+└────────────────────────┬────────────────────────────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+┌───────▼───────┐ ┌────▼────┐ ┌────────▼────────┐
+│    Storage    │ │ Models  │ │    Protocol    │
+│  (BadgerDB)   │ │ (State) │ │   (Injector)   │
+└───────────────┘ └─────────┘ └─────────────────┘
 ```
 
-### Componentes
+### Components
 
 #### `internal/storage/badger.go`
 
-Capa de persistencia con prefijos de clave:
+Persistence layer with key prefixes:
 
-| Prefijo | Uso |
-|---------|-----|
-| `brain:` | Cerebro activo (estado actual) |
-| `archive:` | Archivo profundo (historial) |
-| `task:` | Tareas individuales |
-| `subagent:` | Sub-agentes |
+| Prefix | Usage |
+|--------|-------|
+| `brain:` | Active brain (current state) |
+| `archive:` | Deep archive (history) |
+| `task:` | Individual tasks |
+| `subagent:` | Sub-agents |
 
 #### `internal/mcp/server.go`
 
-Servidor MCP con herramientas registradas:
+MCP server with registered tools:
 
-- Manejo de requests JSON-RPC
-- Validación de parámetros
-- Persistencia automática
+- JSON-RPC request handling
+- Parameter validation
+- Automatic persistence
 
 #### `internal/models/state.go`
 
-Estructuras de datos inmutables con métodos de serialización.
+Immutable data structures with serialization methods.
 
 ---
 
-## Almacenamiento
+## Storage
 
 ### BadgerDB
 
-Base de datos clave-valor optimizada para SSD:
+Key-value database optimized for SSD:
 
 - **Write-optimized**: LSM tree
-- **Transacciones**: ACID
-- **Sin внешних dependencias**: Solo Go
+- **Transactions**: ACID
+- **No external dependencies**: Pure Go
 
-### Jerarquía de Datos
+### Data Hierarchy
 
 ```
-Cerebro Activo (brain:project-path)
+Active Brain (brain:project-path)
 ├── session_id
 ├── current_task_id
 ├── active_tasks[]
@@ -102,7 +100,7 @@ Cerebro Activo (brain:project-path)
 ├── decisions[]
 └── last_updated
 
-Tarea (task:task-id)
+Task (task:task-id)
 ├── id
 ├── title
 ├── description
@@ -111,7 +109,7 @@ Tarea (task:task-id)
 ├── depends_on[]
 └── timestamps
 
-Sub-Agente (subagent:sub-id)
+Sub-Agent (subagent:sub-id)
 ├── id
 ├── task_id
 ├── title
@@ -123,36 +121,36 @@ Sub-Agente (subagent:sub-id)
 
 ---
 
-## Protocolo MCP
+## MCP Protocol
 
-### Inicialización
-
-```
-Cliente → Server: initialize
-Server → Cliente: capabilities
-Cliente → Server: initialized
-```
-
-### Llamada a Herramienta
+### Initialization
 
 ```
-Cliente → Server: tools/call
+Client → Server: initialize
+Server → Client: capabilities
+Client → Server: initialized
+```
+
+### Tool Call
+
+```
+Client → Server: tools/call
          ├─ name: "commit_world_state"
          └─ arguments: {...}
          
-Server → Cliente: tools/call result
+Server → Client: tools/call result
          └─ content: [{type: "text", text: "..."}]
 ```
 
-### Recursos
+### Resources
 
 ```
-singularity://brain  → Estado actual en JSON
+singularity://brain  → Current state in JSON
 ```
 
 ---
 
-## Modelo de Datos
+## Data Model
 
 ### WorldState
 
@@ -194,7 +192,7 @@ type SubAgent struct {
     TaskID      string
     Title       string
     Description string
-    Context     string    // Aislamiento: solo esto ve el sub-agente
+    Context     string    // Isolation: only this sees the sub-agent
     Status      SubAgentStatus  // pending, running, completed, failed
     Result      string
     Error       string
@@ -206,87 +204,87 @@ type SubAgent struct {
 
 ---
 
-## Flujos de Ejecución
+## Execution Flows
 
-### Flujo 1: Sesión Normal
-
-```
-1. OpenCode inicia
-2. MCP Server arranca (stdio)
-3. OpenCode запроса herramientas
-4. [Usuario trabaja]
-5. usuario → commit_world_state()
-6. Server actualiza BadgerDB
-7. OpenCode cierra
-8. MCP Server cierra
-```
-
-### Flujo 2: Orquestador → Sub-agente
+### Flow 1: Normal Session
 
 ```
-ORQUESTADOR                          SUB-AGENTE
-    │                                    │
-    ├─ spawn_sub_agent()                │
-    │   → Crea task en BD                │
-    │   → Crea sub-agent en BD           │
-    │   → Retorna sub_agent_id           │
-    │                                    │
-    │                            ├─ get_sub_agent_task(sub_agent_id)
-    │                            │   → Lee sub-agent de BD
-    │                            │   → Actualiza status a "running"
-    │                            │   → Retorna contexto
-    │                            │
-    │                            ├─ [TRABAJA]
-    │                            │
-    │                            ├─ complete_sub_agent_task()
-    │                            │   → Actualiza status a "completed"
-    │                            │   → Guarda resultado
-    │                            │
-    ├─ get_active_brain()               │
-    │   → Ve resultado del sub-agente    │
+1. OpenCode starts
+2. MCP Server starts (stdio)
+3. OpenCode requests tools
+4. [User works]
+5. user → commit_world_state()
+6. Server updates BadgerDB
+7. OpenCode closes
+8. MCP Server closes
 ```
 
-### Flujo 3: Cambio de Agente (switch_agent)
+### Flow 2: Orchestrator → Sub-agent
 
 ```
-# En misma sesión de OpenCode
+ORCHESTRATOR                         SUB-AGENT
+    │                                      │
+    ├─ spawn_sub_agent()                  │
+    │   → Creates task in DB               │
+    │   → Creates sub-agent in DB          │
+    │   → Returns sub_agent_id             │
+    │                                      │
+    │                              ├─ get_sub_agent_task(sub_agent_id)
+    │                              │   → Reads sub-agent from DB
+    │                              │   → Updates status to "running"
+    │                              │   → Returns context
+    │                              │
+    │                              ├─ [WORKS]
+    │                              │
+    │                              ├─ complete_sub_agent_task()
+    │                              │   → Updates status to "completed"
+    │                              │   → Saves result
+    │                              │
+    ├─ get_active_brain()                 │
+    │   → Sees result from sub-agent      │
+```
 
-> Cambia a modo sub-agente
+### Flow 3: Agent Switch (switch_agent)
+
+```
+# In same OpenCode session
+
+> Switch to sub-agent mode
 switch_agent(mode="sub_agent", sub_agent_id="abc")
 
-→ Retorna contexto del sub-agent
-→ Estado interno cambia a "sub_agent mode"
+→ Returns sub-agent context
+→ Internal state changes to "sub_agent mode"
 
-> Trabajas en la tarea...
+> Work on the task...
 
-> Regresa a modo orquestador  
+> Return to orchestrator mode
 switch_agent(mode="orchestrator")
 
-→ Estado interno cambia a "orchestrator mode"
+→ Internal state changes to "orchestrator mode"
 ```
 
 ---
 
-## Consideraciones de Seguridad
+## Security Considerations
 
-1. **Sin autenticación**: MCP local asume acceso confiable
-2. **Datos en ~/.singularity**:路径 configurable
-3. **Sin cifrado**: Usar FileVault/EncFS si es necesario
-
----
-
-## Limitaciones Conocidas
-
-1. **Un solo proceso**: No soport múltiples conexiones simultáneas
-2. **stdio only**: No hay servidor HTTP
-3. **Sin sincronización**: Cada proyecto es aislado
+1. **No authentication**: Local MCP assumes trusted access
+2. **Data in ~/.singularity**: Configurable path
+3. **No encryption**: Use FileVault/EncFS if needed
 
 ---
 
-## Futuras Mejoras
+## Known Limitations
 
-- [ ] Servidor HTTP/SSE para remote MCP
-- [ ] Autenticación OAuth
-- [ ] Sincronización entre dispositivos
-- [ ] Métricas y analytics
-- [ ] Integración con más editores
+1. **Single process**: No simultaneous connections supported
+2. **stdio only**: No HTTP server
+3. **No synchronization**: Each project is isolated
+
+---
+
+## Future Improvements
+
+- [ ] HTTP/SSE server for remote MCP
+- [ ] OAuth authentication
+- [ ] Cross-device synchronization
+- [ ] Metrics and analytics
+- [ ] Editor integrations

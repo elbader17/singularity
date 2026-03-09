@@ -1,25 +1,25 @@
 # Singularity
 
-> Motor de memoria de estado y orquestación para agentes de IA
+> State memory and orchestration engine for AI agents
 
-Singularity es un sistema de memoria persistente diseñado para maximizar la autonomía de agentes de IA como OpenCode. Implementa el patrón **Blackboard (Pizarra Centralizada)** donde los agentes leen y escriben estado sin comunicarse directamente entre sí.
+Singularity is a persistent memory system designed to maximize the autonomy of AI agents like OpenCode. It implements the **Blackboard Pattern** where agents read and write state without communicating directly with each other.
 
-## Características
+## Features
 
-- **Cerebro Activo**: Estado actual del proyecto siempre disponible
-- **Archivo Profundo**: Contexto histórico cuando es necesario
-- **Orquestación de Tareas**: DAG de tareas con dependencias
-- **Sub-Agentes AISLADOS**: Cada agente recibe solo su contexto específico
-- **Zero Ping-Pong**: Un request contiene toda la información necesaria
+- **Active Brain**: Current project state always available
+- **Deep Archive**: Historical context when needed
+- **Task Orchestration**: DAG of tasks with dependencies
+- **ISOLATED Sub-Agents**: Each agent receives only its specific context
+- **Zero Ping-Pong**: One request contains all necessary information
 
-## Instalación
+## Installation
 
-### Prerrequisitos
+### Prerequisites
 
 - Go 1.23+
-- OpenCode instalado
+- OpenCode installed
 
-### Compilar
+### Build
 
 ```bash
 git clone <repo>
@@ -27,17 +27,17 @@ cd singularity
 go build -o singularity ./cmd/singularity
 ```
 
-### Instalar en OpenCode
+### Install in OpenCode
 
 ```bash
 ./singularity init
 ```
 
-Esto agregará automáticamente la configuración a `~/.config/opencode/opencode.jsonc`
+This will automatically add the configuration to `~/.config/opencode/opencode.jsonc`
 
-### Configuración manual
+### Manual Configuration
 
-Agrega a tu `opencode.jsonc`:
+Add to your `opencode.jsonc`:
 
 ```jsonc
 {
@@ -51,50 +51,50 @@ Agrega a tu `opencode.jsonc`:
 }
 ```
 
-## Uso
+## Usage
 
-### Iniciar servidor MCP
+### Start MCP Server
 
 ```bash
 ./singularity
 ```
 
-### Instalar en OpenCode
+### Install in OpenCode
 
 ```bash
 ./singularity init
 ```
 
-### Ver ayuda
+### View Help
 
 ```bash
 ./singularity help
 ```
 
-## Herramientas MCP
+## MCP Tools
 
 ### commit_world_state
 
-Consolida el estado después de completar una tarea. **Uso obligatorio** al terminar.
+Consolidates state after completing a task. **Mandatory use** when done.
 
 ```json
 {
   "session_id": "ses-123",
   "project_path": "/path/to/project",
   "completed_task_id": "task-456",
-  "task_summary": "Implementado sistema de login",
-  "orchestrator_summary": "Autenticación lista para integrar con API",
-  "learned_insights": "El módulo auth tiene código reusable"
+  "task_summary": "Implemented login system",
+  "orchestrator_summary": "Authentication ready for API integration",
+  "learned_insights": "Auth module has reusable code"
 }
 ```
 
 ### get_active_brain
 
-Obtiene el estado actual del proyecto sin costo de API.
+Gets the current project state at no API cost.
 
 ```json
 {
-  // Respuesta
+  // Response
   {
     "tasks": [...],
     "recent_decisions": [...],
@@ -107,41 +107,41 @@ Obtiene el estado actual del proyecto sin costo de API.
 
 ### list_tasks
 
-Lista todas las tareas con su estado.
+Lists all tasks with their status.
 
 ```json
 {
-  "status": "pending"  // opcional: pending, in_progress, completed
+  "status": "pending"  // optional: pending, in_progress, completed
 }
 ```
 
 ### fetch_deep_context
 
-Recupera contexto histórico. Usar solo cuando sea necesario.
+Retrieves historical context. Use only when necessary.
 
 ```json
 {
-  "query": "autenticación",
-  "task_id": "task-123",  // opcional
+  "query": "authentication",
+  "task_id": "task-123",  // optional
   "limit": 10
 }
 ```
 
 ### spawn_sub_agent
 
-Crea un sub-agente para ejecutar una tarea específica.
+Creates a sub-agent to execute a specific task.
 
 ```json
 {
   "session_id": "ses-123",
   "project_path": "/path/to/project",
-  "title": "Implementar logout",
-  "description": "Crear endpoint de cierre de sesión",
-  "context": "Usa el código de auth/ existente"
+  "title": "Implement logout",
+  "description": "Create logout endpoint",
+  "context": "Use existing auth/ code"
 }
 ```
 
-**Respuesta:**
+**Response:**
 ```json
 {
   "success": true,
@@ -152,7 +152,7 @@ Crea un sub-agente para ejecutar una tarea específica.
 
 ### get_sub_agent_task
 
-Obtiene la tarea asignada (para sub-agentes).
+Gets the assigned task (for sub-agents).
 
 ```json
 {
@@ -162,117 +162,117 @@ Obtiene la tarea asignada (para sub-agentes).
 
 ### complete_sub_agent_task
 
-Completa la tarea del sub-agente.
+Completes the sub-agent task.
 
 ```json
 {
   "sub_agent_id": "sub-abc123",
-  "result": "Logout implementado con JWT blacklist"
+  "result": "Logout implemented with JWT blacklist"
 }
 ```
 
 ### switch_agent
 
-Cambia entre modo Orquestador y Sub-agente en la misma sesión.
+Switches between Orchestrator and Sub-agent mode in the same session.
 
 ```json
 {
-  "mode": "sub_agent",  // o "orchestrator"
-  "sub_agent_id": "sub-abc123"  // requerido si mode=sub_agent
+  "mode": "sub_agent",  // or "orchestrator"
+  "sub_agent_id": "sub-abc123"  // required if mode=sub_agent
 }
 ```
 
-## Arquitectura
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Singularity                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌────────────┐ │
-│  │ Cerebro    │  │ Archivo     │  │ Tareas     │ │
-│  │ Activo     │  │ Profundo    │  │ (DAG)      │ │
-│  └─────────────┘  └─────────────┘  └────────────┘ │
-└─────────────────────────────────────────────────────┘
-         ▲                  ▲                  ▲
-         │                  │                  │
-    ┌────┴────┐       ┌────┴────┐        ┌────┴────┐
-    │Orquestador│       │Sub-agente│       │Sub-agente│
-    └──────────┘       └──────────┘        └──────────┘
+┌──────────────────────────────────────────────────────────┐
+│                         Singularity                       │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────┐  │
+│  │    Brain      │  │    Archive    │  │   Tasks    │  │
+│  │   (Active)    │  │    (Deep)     │  │   (DAG)    │  │
+│  └───────────────┘  └───────────────┘  └────────────┘  │
+└──────────────────────────────────────────────────────────┘
+          ▲                     ▲                     ▲
+          │                     │                     │
+    ┌─────┴─────┐        ┌─────┴─────┐        ┌─────┴─────┐
+    │Orchestrator│        │ Sub-agent │        │ Sub-agent │
+    └───────────┘        └───────────┘        └───────────┘
 ```
 
-### Componentes
+### Components
 
-| Componente | Descripción |
-|------------|-------------|
-| `internal/storage` | BadgerDB para persistencia |
-| `internal/mcp` | Servidor MCP + herramientas |
-| `internal/models` | Estructuras de datos |
-| `internal/protocol` | Inyección de contexto |
+| Component | Description |
+|-----------|-------------|
+| `internal/storage` | BadgerDB for persistence |
+| `internal/mcp` | MCP server + tools |
+| `internal/models` | Data structures |
+| `internal/protocol` | Context injection |
 
-## Patrón de Trabajo
+## Workflow Pattern
 
-### Flujo Orquestador
-
-```
-1. get_active_brain()     → Ver estado actual
-2. list_tasks()           → Ver tareas pendientes  
-3. spawn_sub_agent()      → Crear tarea para sub-agente
-4. [ESPERAR]
-5. commit_world_state()   → Consolidar resultados
-```
-
-### Flujo Sub-agente
+### Orchestrator Flow
 
 ```
-1. get_sub_agent_task()    → Obtener mi tarea y contexto
-2. [TRABAJAR]
-3. commit_world_state()   → Consolidar mi trabajo
-4. complete_sub_agent_task() → Reportar al orquestador
+1. get_active_brain()     → View current state
+2. list_tasks()           → View pending tasks
+3. spawn_sub_agent()     → Create task for sub-agent
+4. [WAIT]
+5. commit_world_state()  → Consolidate results
 ```
 
-## Reglas Fundamentales
+### Sub-agent Flow
 
-1. **Un request = toda la información**
-   - No preguntes "¿dónde nos quedamos?" - usa `get_active_brain`
-   - No hagas ping-pong exploratorio - deduce y actúa
+```
+1. get_sub_agent_task()   → Get my task and context
+2. [WORK]
+3. commit_world_state()   → Consolidate my work
+4. complete_sub_agent_task() → Report to orchestrator
+```
 
-2. **Aislamiento estricto**
-   - Orquestador solo ve resúmenes de alto nivel
-   - Sub-agente solo ve su contexto específico
+## Core Rules
 
-3. **Consolidación obligatoria**
-   - Siempre usa `commit_world_state` al terminar
-   - Incluye código, decisiones, aprendizajes
+1. **One request = all information**
+   - Don't ask "where did we leave off?" - use `get_active_brain`
+   - Don't do exploratory ping-pong - deduce and act
 
-## Ejemplo de Sesión
+2. **Strict isolation**
+   - Orchestrator only sees high-level summaries
+   - Sub-agent only sees its specific context
+
+3. **Mandatory consolidation**
+   - Always use `commit_world_state` when done
+   - Include code, decisions, learnings
+
+## Session Example
 
 ```bash
-# Sesión 1 - Orquestador
+# Session 1 - Orchestrator
 $ opencode .
 
-> ¿Cuál es el estado del proyecto?
-[Usa get_active_brain]
+> What's the project state?
+[Uses get_active_brain]
 
-> Crea una tarea para implementar el login
-[Usa spawn_sub_agent]
+> Create a task to implement login
+[Uses spawn_sub_agent]
 
-# Sesión 2 - Sub-agente (nueva terminal)
+# Session 2 - Sub-agent (new terminal)
 $ opencode .
 
-> Mi tarea es...
-[Usa get_sub_agent_task]
+> My task is...
+[Uses get_sub_agent_task]
 
-> Implementando login...
-[Trabaja]
+> Implementing login...
+[Works]
 
-> Listo
-[Usa commit_world_state + complete_sub_agent_task]
+> Done
+[Uses commit_world_state + complete_sub_agent_task]
 
-# Sesión 1 - Orquestador
-> ¿cómo quedó?
-[Usa get_active_brain]
+# Session 1 - Orchestrator
+> How did it go?
+[Uses get_active_brain]
 ```
 
-## Desarrollo
+## Development
 
 ```bash
 go mod tidy
@@ -280,6 +280,6 @@ go build ./...
 go test ./...
 ```
 
-## Licencia
+## License
 
 MIT
