@@ -61,20 +61,20 @@ Singularity provides **two specialized engines** optimized for different LLM cap
 │                    DECISION TREE                                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Is the task complex or multi-step?                            │
+│  Is the task complex or multi-step?                             │
 │      │                                                          │
 │      ├── YES → Use CORE ENGINE                                  │
 │      │         - Full context available                         │
-│      │         - Delegates to sub-agents                       │
-│      │ planning                            │
-│         - Strategic      │                                                          │
-│      └── NO → Is it a quick fix or small change?               │
+│      │         - Delegates to sub-agents                        │
+│      │ planning                                                 │
+│      |  - Strategic                                             │
+│      └── NO → Is it a quick fix or small change?                │
 │                │                                                │
-│                ├── YES → Use PARTICLE ENGINE                   │
-│                │         - Work function by function           │
-│                │         - Minimal context                     │
-│                │         - AST-based editing                   │
-│                │                                                  │
+│                ├── YES → Use PARTICLE ENGINE                    │
+│                │         - Work function by function            │
+│                │         - Minimal context                      │
+│                │         - AST-based editing                    │
+│                │                                                │
 │                └── NO → Use CORE ENGINE                         │
 │                          - General purpose                      │
 │                                                                 │
@@ -171,27 +171,27 @@ Instead of reading entire files, Particle agents:
 │                 PARTICLE TOOL CHAIN                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌──────────────────┐                                          │
+│  ┌──────────────────┐                                           │
 │  │ get_file_skeleton│ → Returns only:                           │
 │  │                  │   - Package name                          │
-│  │ "path/to/file.go│   - Imports                                │
-│  └────────┬─────────┘   - Function signatures                  │
+│  │ "path/to/file.go │   - Imports                               │
+│  └────────┬─────────┘   - Function signatures                   │
 │           │             - Struct definitions                    │
-│           ▼                                                   │
-│  ┌──────────────────┐                                          │
-│  │  read_function  │ → Returns ONLY the requested function:     │
+│           ▼                                                     │
+│  ┌──────────────────┐                                           │
+│  │  read_function   │ → Returns ONLY the requested function:    │
 │  │                  │                                           │
 │  │ func Login(...)  │   func Login(user, pass) error {          │
-│  └────────┬─────────┘     // just this function                │
+│  └────────┬─────────┘     // just this function                 │
 │           │             }                                       │
-│           ▼                                                   │
-│  ┌──────────────────┐                                          │
-│  │ replace_function │ → Saves to BadgerDB:                     │
-│  │                  │   - Only modifies one function           │
-│  │ new_code: "..."  │   - Preserves rest of file              │
-│  └────────┬─────────┘   - Immediate persistence                │
+│           ▼                                                     │
+│  ┌──────────────────┐                                           │
+│  │ replace_function │ → Saves to BadgerDB:                      │
+│  │                  │   - Only modifies one function            │
+│  │ new_code: "..."  │   - Preserves rest of file                │
+│  └────────┬─────────┘   - Immediate persistence                 │
 │           │                                                     │
-│           ▼                                                   │
+│           ▼                                                     │
 │      [Repeat for next function]                                 │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -365,46 +365,46 @@ Some agents can use **both engines** strategically:
 │                            SINGULARITY SERVER                           │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                     ACTIVE BRAIN (State)                        │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │   │
-│  │  │  Tasks DAG  │  │   Decisions │  │   Project Metadata      │ │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                     ACTIVE BRAIN (State)                        │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │    │
+│  │  │  Tasks DAG  │  │   Decisions │  │   Project Metadata      │  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
 │                                    │                                    │
 │                                    ▼                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                      ARCHIVE (History)                          │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │   │
-│  │  │   Events    │  │   Context   │  │   Learnings             │ │   │
-│  │  │  (Full Log) │  │  (Compressed│  │   (Insights)           │ │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                      ARCHIVE (History)                          │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │    │
+│  │  │   Events    │  │   Context   │  │   Learnings             │  │    │
+│  │  │  (Full Log) │  │  (Compressed│  │   (Insights)            │  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                         ENGINE LAYER                                    │
 │                                                                         │
-│  ┌─────────────────────────┐        ┌─────────────────────────────────┐  │
-│  │      CORE ENGINE        │        │        PARTICLE ENGINE          │  │
-│  │  ┌───────────────────┐  │        │  ┌───────────────────────────┐ │  │
-│  │  │ • Dense Context   │  │        │  │ • Progressive Disclosure │ │  │
-│  │  │ • Delegation      │  │        │  │ • AST-Based Tools        │ │  │
-│  │  │ • Strategic Plan  │  │        │  │ • Function-Level Edit    │ │  │
-│  │  └───────────────────┘  │        │  └───────────────────────────┘ │  │
-│  │                         │        │                                  │  │
-│  │  Tools:                 │        │  Tools:                          │  │
-│  │  • spawn_sub_agent    │        │  • get_file_skeleton           │  │
-│  │  • get_active_brain  │        │  • read_function               │  │
-│  │  • commit_world_state│        │  • replace_function           │  │
-│  │  • plan_and_delegate │        │  • sync_dag_metadata          │  │
-│  │                       │        │  • compress_history_key       │  │
-│  └─────────────────────────┘        └─────────────────────────────────┘  │
-│                    │                              │                       │
-│                    └──────────┬───────────────────┘                       │
-│                               ▼                                          │
+│  ┌─────────────────────────┐        ┌─────────────────────────────────┐ │
+│  │      CORE ENGINE        │        │        PARTICLE ENGINE          │ │
+│  │  ┌───────────────────┐  │        │  ┌───────────────────────────┐  │ │
+│  │  │ • Dense Context   │  │        │  │ • Progressive Disclosure  │  │ │
+│  │  │ • Delegation      │  │        │  │ • AST-Based Tools         │  │ │
+│  │  │ • Strategic Plan  │  │        │  │ • Function-Level Edit     │  │ │
+│  │  └───────────────────┘  │        │  └───────────────────────────┘  │ │
+│  │                         │        │                                 │ │
+│  │  Tools:                 │        │  Tools:                         │ │
+│  │  • spawn_sub_agent      │        │  • get_file_skeleton            │ │
+│  │  • get_active_brain     │        │  • read_function                │ │
+│  │  • commit_world_state   │        │  • replace_function             │ │
+│  │  • plan_and_delegate    │        │  • sync_dag_metadata            │ │
+│  │                         │        │  • compress_history_key         │ │
+│  └─────────────────────────┘        └─────────────────────────────────┘ │
+│                    │                              │                     │
+│                    └──────────┬───────────────────┘                     │
+│                               ▼                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    TOOL REGISTRY                                │    │
-│  │   switch_engine | get_engine_info | list_engines              │    │
+│  │                      TOOL REGISTRY                              │    │
+│  │     switch_engine | get_engine_info | list_engines              │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -412,10 +412,10 @@ Some agents can use **both engines** strategically:
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │                    BADGER DATABASE                              │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │    │
-│  │  │  State   │ │  Tasks   │ │  Code    │ │   History        │  │    │
-│  │  │ (Brain)  │ │   (DAG)  │ │ (AST)    │ │   (Archive)     │  │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────────────┘  │    │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐    │    │
+│  │  │  State   │ │  Tasks   │ │  Code    │ │   History        │    │    │
+│  │  │ (Brain)  │ │   (DAG)  │ │ (AST)    │ │   (Archive)      │    │    │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────────────┘    │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
