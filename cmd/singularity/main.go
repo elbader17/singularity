@@ -51,7 +51,7 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Println(`Singularity - Motor de Memoria de Estado
+	fmt.Print(`Singularity - Motor de Memoria de Estado
 
 Uso:
   singularity           Iniciar servidor MCP
