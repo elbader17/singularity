@@ -37,6 +37,73 @@ type SubAgent struct {
 	CompletedAt *time.Time     `json:"completed_at,omitempty"`
 }
 
+// CodeFile representa un archivo de código a validar y guardar
+type CodeFile struct {
+	FilePath string `json:"file_path"`
+	Content  string `json:"content"`
+	Language string `json:"language,omitempty"` // go, python, js, etc.
+}
+
+// TaskResult representa el resultado de un sub-agente con código
+type TaskResult struct {
+	TaskID           string     `json:"task_id"`
+	Summary          string     `json:"summary"`
+	CodeFiles        []CodeFile `json:"code_files"`
+	ValidationNotes  string     `json:"validation_notes,omitempty"`
+	DependenciesJSON string     `json:"dependencies_json,omitempty"` // Para package.json, go.mod, etc.
+	Timestamp        time.Time  `json:"timestamp"`
+}
+
+// CommitTaskResultRequest request para commit con validación
+type CommitTaskResultRequest struct {
+	SubAgentID       string     `json:"sub_agent_id"`
+	ProjectPath      string     `json:"project_path"`
+	SessionID        string     `json:"session_id"`
+	TaskID           string     `json:"task_id"`
+	CodeFiles        []CodeFile `json:"code_files"`
+	Summary          string     `json:"summary"`
+	ValidationNotes  string     `json:"validation_notes"`
+	DependenciesJSON string     `json:"dependencies_json,omitempty"`
+}
+
+// CommitTaskResultResponse respuesta del Judge
+type CommitTaskResultResponse struct {
+	Success     bool     `json:"success"`
+	Validated   bool     `json:"validated"`    // true si pasó validación
+	BuildOutput string   `json:"build_output"` // output de compilación
+	BuildError  string   `json:"build_error"`  // error si falló
+	SavedFiles  []string `json:"saved_files"`  // archivos guardados
+	TaskStatus  string   `json:"task_status"`  // completed o failed
+	Message     string   `json:"message"`
+}
+
+// PlanAndDelegateRequest request para planificar y delegar
+type PlanAndDelegateRequest struct {
+	SessionID   string `json:"session_id"`
+	ProjectPath string `json:"project_path"`
+	Requirement string `json:"requirement"`
+	Context     string `json:"context,omitempty"`
+}
+
+// PlanAndDelegateResponse respuesta de planificación
+type PlanAndDelegateResponse struct {
+	Success      bool                `json:"success"`
+	PlanID       string              `json:"plan_id"`
+	Tasks        []PlannedTask       `json:"tasks"`
+	SubAgentIDs  []string            `json:"sub_agent_ids"`
+	Dependencies map[string][]string `json:"dependencies"` // task_id -> dependencias
+	Message      string              `json:"message"`
+}
+
+// PlannedTask representa una tarea planificada
+type PlannedTask struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Priority    int    `json:"priority"`
+	Context     string `json:"context"` // Código/contexto para ejecutar
+}
+
 type SpawnSubAgentRequest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -180,4 +247,14 @@ func SubAgentFromJSON(data []byte) (*SubAgent, error) {
 	var sa SubAgent
 	err := json.Unmarshal(data, &sa)
 	return &sa, err
+}
+
+func (tr *TaskResult) ToJSON() ([]byte, error) {
+	return json.Marshal(tr)
+}
+
+func TaskResultFromJSON(data []byte) (*TaskResult, error) {
+	var tr TaskResult
+	err := json.Unmarshal(data, &tr)
+	return &tr, err
 }

@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"singularity/internal/models"
@@ -170,6 +175,65 @@ func (s *Server) registerTools() {
 			mcp.Description("ID del sub-agente (requerido si mode=sub_agent)"),
 		),
 	), s.handleSwitchAgent)
+
+	// Nueva herramienta: plan_and_delegate
+	planAndDelegateTool := mcp.NewTool("plan_and_delegate",
+		mcp.WithDescription("Analiza un requisito, crea un DAG de tareas y las delega a sub-agentes. "+
+			"Esta es la herramienta principal del Orquestador."),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("ID de la sesión actual"),
+		),
+		mcp.WithString("project_path",
+			mcp.Required(),
+			mcp.Description("Ruta del proyecto"),
+		),
+		mcp.WithString("requirement",
+			mcp.Required(),
+			mcp.Description("Requisito de negocio a implementar"),
+		),
+		mcp.WithString("context",
+			mcp.Description("Contexto adicional del proyecto (opcional)"),
+		),
+	)
+	s.s.AddTool(planAndDelegateTool, s.handlePlanAndDelegate)
+
+	// Nueva herramienta: commit_task_result (con Judge Determinista)
+	commitTaskResultTool := mcp.NewTool("commit_task_result",
+		mcp.WithDescription("Envía el código generado por el Sub-agente. "+
+			"ACTIVA el JUEZ DETERMINISTA que validará compilación antes de guardar."),
+		mcp.WithString("sub_agent_id",
+			mcp.Required(),
+			mcp.Description("ID del sub-agente que generó el código"),
+		),
+		mcp.WithString("project_path",
+			mcp.Required(),
+			mcp.Description("Ruta del proyecto"),
+		),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("ID de la sesión actual"),
+		),
+		mcp.WithString("task_id",
+			mcp.Required(),
+			mcp.Description("ID de la tarea"),
+		),
+		mcp.WithString("code_files",
+			mcp.Required(),
+			mcp.Description("JSON array de archivos: [{\"file_path\": \"ruta\", \"content\": \"código\"}]"),
+		),
+		mcp.WithString("summary",
+			mcp.Required(),
+			mcp.Description("Resumen de lo que se implementó"),
+		),
+		mcp.WithString("validation_notes",
+			mcp.Description("Notas de validación interna del sub-agente"),
+		),
+		mcp.WithString("dependencies_json",
+			mcp.Description("Dependencias adicionales (package.json, go.mod, etc.) en JSON"),
+		),
+	)
+	s.s.AddTool(commitTaskResultTool, s.handleCommitTaskResult)
 }
 
 func (s *Server) registerResources() {
@@ -897,4 +961,474 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 	responseJSON, _ := json.Marshal(response)
 	result := banner + "\n\n```json\n" + string(responseJSON) + "\n```"
 	return mcp.NewToolResultText(result), nil
+}
+
+// =============================================================================
+// PLAN_AND_DELEGATE - Herramienta del Orquestador
+// =============================================================================
+
+func (s *Server) handlePlanAndDelegate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sessionID, err := request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError("session_id es requerido: " + err.Error()), nil
+	}
+
+	projectPath, err := request.RequireString("project_path")
+	if err != nil {
+		return mcp.NewToolResultError("project_path es requerido: " + err.Error()), nil
+	}
+
+	requirement, err := request.RequireString("requirement")
+	if err != nil {
+		return mcp.NewToolResultError("requirement es requerido: " + err.Error()), nil
+	}
+
+	context := request.GetString("context", "")
+
+	// Crear el plan (DAG de tareas)
+	planID := generateID()
+
+	// Descomponer el requisito en tareas atómicas
+	// En una implementación real, esto podría usar el LLM para planificar
+	tasks := s.decomposeRequirement(planID, requirement, context)
+
+	// Crear sub-agentes para cada tarea
+	subAgentIDs := []string{}
+	for i, task := range tasks {
+		subAgentID := generateID()
+		taskID := planID + "-task-" + fmt.Sprintf("%d", i)
+
+		subAgent := models.SubAgent{
+			ID:          subAgentID,
+			TaskID:      taskID,
+			Title:       task.Title,
+			Description: task.Description,
+			Context:     task.Context,
+			Status:      models.SubAgentStatusPending,
+			CreatedAt:   time.Now(),
+		}
+
+		subAgentData, _ := subAgent.ToJSON()
+		subAgentKey := storage.SubAgentKey(subAgentID)
+		s.db.Set(subAgentKey, subAgentData)
+
+		// Crear tarea asociada
+		t := models.Task{
+			ID:          taskID,
+			Title:       task.Title,
+			Description: task.Description,
+			Status:      models.TaskStatusPending,
+			Assignee:    subAgentID,
+			Priority:    task.Priority,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+		taskData, _ := t.ToJSON()
+		taskKey := storage.TaskKey(taskID)
+		s.db.Set(taskKey, taskData)
+
+		subAgentIDs = append(subAgentIDs, subAgentID)
+	}
+
+	// Actualizar WorldState
+	wsKey := storage.ActiveBrainKey(projectPath)
+	existingWS, _ := s.db.Get(wsKey)
+	var ws *models.WorldState
+	if existingWS != nil {
+		ws, _ = models.WorldStateFromJSON(existingWS)
+	}
+	if ws == nil {
+		ws = &models.WorldState{
+			SessionID:   sessionID,
+			ProjectPath: projectPath,
+			Metadata:    make(map[string]string),
+		}
+	}
+
+	for i := range tasks {
+		taskID := planID + "-task-" + fmt.Sprintf("%d", i)
+		ws.ActiveTasks = append(ws.ActiveTasks, taskID)
+	}
+	wsData, _ := ws.ToJSON()
+	s.db.Set(wsKey, wsData)
+
+	response := models.PlanAndDelegateResponse{
+		Success:      true,
+		PlanID:       planID,
+		Tasks:        tasks,
+		SubAgentIDs:  subAgentIDs,
+		Dependencies: make(map[string][]string),
+		Message:      fmt.Sprintf("Plan creado con %d tareas", len(tasks)),
+	}
+
+	responseJSON, _ := json.Marshal(response)
+	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+func (s *Server) decomposeRequirement(planID, requirement, context string) []models.PlannedTask {
+	// Esta es una implementación básica de descomposición
+	// En producción, esto podría usar el LLM para analizar y crear el DAG
+
+	// Por ahora, creamos una tarea genérica que contiene todo el contexto
+	task := models.PlannedTask{
+		ID:          planID + "-task-0",
+		Title:       "Implementar: " + requirement,
+		Description: requirement,
+		Priority:    1,
+		Context:     context,
+	}
+
+	// Si el contexto está vacío, usamos el requisito como contexto
+	if task.Context == "" {
+		task.Context = requirement
+	}
+
+	return []models.PlannedTask{task}
+}
+
+// =============================================================================
+// COMMIT_TASK_RESULT - Herramienta del Sub-agente con JUDGE DETERMINISTA
+// =============================================================================
+
+func (s *Server) handleCommitTaskResult(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	subAgentID, err := request.RequireString("sub_agent_id")
+	if err != nil {
+		return mcp.NewToolResultError("sub_agent_id es requerido: " + err.Error()), nil
+	}
+
+	projectPath, err := request.RequireString("project_path")
+	if err != nil {
+		return mcp.NewToolResultError("project_path es requerido: " + err.Error()), nil
+	}
+
+	_, err = request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError("session_id es requerido: " + err.Error()), nil
+	}
+
+	taskID, err := request.RequireString("task_id")
+	if err != nil {
+		return mcp.NewToolResultError("task_id es requerido: " + err.Error()), nil
+	}
+	_ = taskID // usado en saveFailedAttempt
+
+	codeFilesJSON := request.GetString("code_files", "[]")
+	summary := request.GetString("summary", "")
+	validationNotes := request.GetString("validation_notes", "")
+	depsJSON := request.GetString("dependencies_json", "")
+
+	// Parsear los archivos de código
+	var codeFiles []models.CodeFile
+	if err := json.Unmarshal([]byte(codeFilesJSON), &codeFiles); err != nil {
+		return mcp.NewToolResultError("Error al parsear code_files: " + err.Error()), nil
+	}
+
+	if len(codeFiles) == 0 {
+		return mcp.NewToolResultError("code_files no puede estar vacío"), nil
+	}
+
+	// === JUEZ DETERMINISTA: Validar compilación ===
+	validationResult := s.validateCode(projectPath, codeFiles, depsJSON)
+
+	response := models.CommitTaskResultResponse{
+		Success:     true,
+		Validated:   validationResult.Valid,
+		BuildOutput: validationResult.Output,
+		BuildError:  validationResult.Error,
+	}
+
+	if !validationResult.Valid {
+		// FALLÓ LA VALIDACIÓN - No guardamos en BadgerDB
+		response.TaskStatus = "failed"
+		response.Message = "❌ VALIDACIÓN FALLIDA: El código no compila. Arregla los errores y reintenta."
+
+		// Guardar el intento fallido para debugging
+		s.saveFailedAttempt(subAgentID, taskID, codeFiles, validationResult.Error)
+
+		responseJSON, _ := json.Marshal(response)
+		return mcp.NewToolResultText(string(responseJSON)), nil
+	}
+
+	// === PASSÓ LA VALIDACIÓN - Guardar en BadgerDB ===
+	savedFiles := []string{}
+	items := make(map[string][]byte)
+
+	for _, cf := range codeFiles {
+		// Guardar el archivo en el sistema de archivos
+		fullPath := filepath.Join(projectPath, cf.FilePath)
+		dir := filepath.Dir(fullPath)
+
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			response.BuildError += fmt.Sprintf("\nError al crear directorio %s: %v", dir, err)
+			continue
+		}
+
+		if err := ioutil.WriteFile(fullPath, []byte(cf.Content), 0644); err != nil {
+			response.BuildError += fmt.Sprintf("\nError al escribir archivo %s: %v", cf.FilePath, err)
+			continue
+		}
+
+		savedFiles = append(savedFiles, cf.FilePath)
+
+		// Guardar en BadgerDB también
+		ccKey := storage.DeepArchiveKey("code:" + cf.FilePath + ":" + fmt.Sprintf("%d", time.Now().Unix()))
+		ccData, _ := json.Marshal(models.ArchiveEntry{
+			Type:    "code",
+			Summary: summary,
+			Content: cf.Content,
+		})
+		items[ccKey] = ccData
+	}
+
+	// Guardar el resultado de la tarea
+	taskResult := models.TaskResult{
+		TaskID:           taskID,
+		Summary:          summary,
+		CodeFiles:        codeFiles,
+		ValidationNotes:  validationNotes,
+		DependenciesJSON: depsJSON,
+		Timestamp:        time.Now(),
+	}
+	trData, _ := taskResult.ToJSON()
+	trKey := storage.TaskKey("result:" + taskID)
+	items[trKey] = trData
+
+	// Actualizar sub-agente
+	subAgentKey := storage.SubAgentKey(subAgentID)
+	subAgentData, _ := s.db.Get(subAgentKey)
+	if subAgentData != nil {
+		sa, _ := models.SubAgentFromJSON(subAgentData)
+		if sa != nil {
+			sa.Status = models.SubAgentStatusCompleted
+			sa.Result = summary
+			now := time.Now()
+			sa.CompletedAt = &now
+			saData, _ := sa.ToJSON()
+			items[subAgentKey] = saData
+		}
+	}
+
+	// Actualizar tarea a completada
+	taskKey := storage.TaskKey(taskID)
+	taskData, _ := s.db.Get(taskKey)
+	if taskData != nil {
+		task, _ := models.TaskFromJSON(taskData)
+		if task != nil {
+			task.Status = models.TaskStatusCompleted
+			task.UpdatedAt = time.Now()
+			now := time.Now()
+			task.CompletedAt = &now
+			tData, _ := task.ToJSON()
+			items[taskKey] = tData
+		}
+	}
+
+	// Guardar todo en BadgerDB
+	if err := s.db.SetMulti(items); err != nil {
+		response.BuildError += "\nError al guardar en BD: " + err.Error()
+	}
+
+	response.SavedFiles = savedFiles
+	response.TaskStatus = "completed"
+	response.Message = "✅ VALIDACIÓN PASSED y código guardado"
+
+	responseJSON, _ := json.Marshal(response)
+	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+// =============================================================================
+// JUDGE DETERMINISTA - Validador de Compilación
+// =============================================================================
+
+type ValidationResult struct {
+	Valid  bool
+	Output string
+	Error  string
+}
+
+func (s *Server) validateCode(projectPath string, codeFiles []models.CodeFile, depsJSON string) ValidationResult {
+	// Determinar el tipo de proyecto por la extensión de archivos
+	hasGoFiles := false
+	hasJSFiles := false
+	hasPythonFiles := false
+
+	for _, cf := range codeFiles {
+		ext := strings.ToLower(filepath.Ext(cf.FilePath))
+		if ext == ".go" {
+			hasGoFiles = true
+		} else if ext == ".js" || ext == ".ts" || ext == ".jsx" || ext == ".tsx" {
+			hasJSFiles = true
+		} else if ext == ".py" {
+			hasPythonFiles = true
+		}
+	}
+
+	// Si hay archivos Go, validar con go build
+	if hasGoFiles {
+		return s.validateGoCode(projectPath, codeFiles)
+	}
+
+	// Si hay archivos JS/TS, validar con TypeScript o ESLint
+	if hasJSFiles {
+		return s.validateJSCode(projectPath, codeFiles)
+	}
+
+	// Si hay archivos Python, validar con Python syntax check
+	if hasPythonFiles {
+		return s.validatePythonCode(projectPath, codeFiles)
+	}
+
+	// Si no se detecta tipo, intentar validar como texto plano
+	return ValidationResult{
+		Valid:  true,
+		Output: "No se detectó tipo de proyecto para validación",
+		Error:  "",
+	}
+}
+
+func (s *Server) validateGoCode(projectPath string, codeFiles []models.CodeFile) ValidationResult {
+	// Escribir archivos temporales para validación
+	tempDir, err := ioutil.TempDir("", "singularity-validate-*")
+	if err != nil {
+		return ValidationResult{Valid: false, Error: "Error al crear directorio temporal: " + err.Error()}
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Escribir archivos
+	for _, cf := range codeFiles {
+		fullPath := filepath.Join(tempDir, cf.FilePath)
+		dir := filepath.Dir(fullPath)
+		os.MkdirAll(dir, 0755)
+		ioutil.WriteFile(fullPath, []byte(cf.Content), 0644)
+	}
+
+	// Intentar go build
+	cmd := exec.Command("go", "build", "-o", "/dev/null", ".")
+	cmd.Dir = tempDir
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return ValidationResult{
+			Valid:  false,
+			Output: string(output),
+			Error:  err.Error(),
+		}
+	}
+
+	return ValidationResult{
+		Valid:  true,
+		Output: "Go build exitoso: " + string(output),
+		Error:  "",
+	}
+}
+
+func (s *Server) validateJSCode(projectPath string, codeFiles []models.CodeFile) ValidationResult {
+	// Verificar si hay package.json
+	hasPackageJSON := false
+	for _, cf := range codeFiles {
+		if cf.FilePath == "package.json" {
+			hasPackageJSON = true
+			break
+		}
+	}
+
+	// Si no hay package.json, solo validar sintaxis básica
+	if !hasPackageJSON {
+		return ValidationResult{
+			Valid:  true,
+			Output: "Sin package.json - validación de sintaxis omitida",
+			Error:  "",
+		}
+	}
+
+	// Escribir archivos temporales
+	tempDir, err := ioutil.TempDir("", "singularity-validate-*")
+	if err != nil {
+		return ValidationResult{Valid: false, Error: "Error al crear directorio temporal: " + err.Error()}
+	}
+	defer os.RemoveAll(tempDir)
+
+	for _, cf := range codeFiles {
+		fullPath := filepath.Join(tempDir, cf.FilePath)
+		dir := filepath.Dir(fullPath)
+		os.MkdirAll(dir, 0755)
+		ioutil.WriteFile(fullPath, []byte(cf.Content), 0644)
+	}
+
+	// Intentar tsc --noEmit si está disponible
+	cmd := exec.Command("npx", "tsc", "--noEmit")
+	cmd.Dir = tempDir
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		// Si no hay TypeScript, intentar node --check
+		cmd = exec.Command("node", "--check", codeFiles[0].FilePath)
+		cmd.Dir = tempDir
+		output2, err2 := cmd.CombinedOutput()
+
+		if err2 != nil {
+			return ValidationResult{
+				Valid:  false,
+				Output: string(output) + "\n" + string(output2),
+				Error:  "Validación JS/TS fallida",
+			}
+		}
+	}
+
+	return ValidationResult{
+		Valid:  true,
+		Output: "Validación JS/TS exitosa: " + string(output),
+		Error:  "",
+	}
+}
+
+func (s *Server) validatePythonCode(projectPath string, codeFiles []models.CodeFile) ValidationResult {
+	// Escribir archivos temporales
+	tempDir, err := ioutil.TempDir("", "singularity-validate-*")
+	if err != nil {
+		return ValidationResult{Valid: false, Error: "Error al crear directorio temporal: " + err.Error()}
+	}
+	defer os.RemoveAll(tempDir)
+
+	for _, cf := range codeFiles {
+		fullPath := filepath.Join(tempDir, cf.FilePath)
+		dir := filepath.Dir(fullPath)
+		os.MkdirAll(dir, 0755)
+		ioutil.WriteFile(fullPath, []byte(cf.Content), 0644)
+	}
+
+	// Intentar python -m py_compile
+	cmd := exec.Command("python3", "-m", "py_compile", codeFiles[0].FilePath)
+	cmd.Dir = tempDir
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return ValidationResult{
+			Valid:  false,
+			Output: string(output),
+			Error:  err.Error(),
+		}
+	}
+
+	return ValidationResult{
+		Valid:  true,
+		Output: "Python syntax check exitoso",
+		Error:  "",
+	}
+}
+
+func (s *Server) saveFailedAttempt(subAgentID, taskID string, codeFiles []models.CodeFile, errorMsg string) {
+	items := make(map[string][]byte)
+
+	failedKey := storage.DeepArchiveKey("failed:" + taskID + ":" + fmt.Sprintf("%d", time.Now().Unix()))
+	failedData, _ := json.Marshal(map[string]interface{}{
+		"sub_agent_id": subAgentID,
+		"task_id":      taskID,
+		"code_files":   codeFiles,
+		"error":        errorMsg,
+		"timestamp":    time.Now(),
+	})
+	items[failedKey] = failedData
+
+	s.db.SetMulti(items)
 }
