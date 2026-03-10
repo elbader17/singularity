@@ -15,7 +15,8 @@
                             green: '#00ff41',
                             yellow: '#ccff00',
                             red: '#ff003c',
-                            purple: '#b026ff'
+                            purple: '#b026ff',
+                            blue: '#00f0ff'
                         },
                         base: {
                             900: '#050505',
@@ -34,6 +35,7 @@
                         'brutal-yellow': '4px 4px 0px #ccff00',
                         'brutal-purple': '4px 4px 0px #b026ff',
                         'brutal-white': '4px 4px 0px #ffffff',
+                        'brutal-blue': '4px 4px 0px #00f0ff',
                     }
                 }
             }
@@ -99,22 +101,8 @@
             animation: glitch-anim2 5s infinite linear alternate-reverse;
         }
 
-        @keyframes glitch-anim {
-            0% { clip: rect(47px, 9999px, 83px, 0); }
-            20% { clip: rect(61px, 9999px, 14px, 0); }
-            40% { clip: rect(31px, 9999px, 98px, 0); }
-            60% { clip: rect(10px, 9999px, 53px, 0); }
-            80% { clip: rect(72px, 9999px, 21px, 0); }
-            100% { clip: rect(2px, 9999px, 89px, 0); }
-        }
-        @keyframes glitch-anim2 {
-            0% { clip: rect(12px, 9999px, 59px, 0); }
-            20% { clip: rect(78px, 9999px, 34px, 0); }
-            40% { clip: rect(45px, 9999px, 87px, 0); }
-            60% { clip: rect(90px, 9999px, 11px, 0); }
-            80% { clip: rect(23px, 9999px, 67px, 0); }
-            100% { clip: rect(56px, 9999px, 42px, 0); }
-        }
+        @keyframes glitch-anim { 0% { clip: rect(47px, 9999px, 83px, 0); } 20% { clip: rect(61px, 9999px, 14px, 0); } 40% { clip: rect(31px, 9999px, 98px, 0); } 60% { clip: rect(10px, 9999px, 53px, 0); } 80% { clip: rect(72px, 9999px, 21px, 0); } 100% { clip: rect(2px, 9999px, 89px, 0); } }
+        @keyframes glitch-anim2 { 0% { clip: rect(12px, 9999px, 59px, 0); } 20% { clip: rect(78px, 9999px, 34px, 0); } 40% { clip: rect(45px, 9999px, 87px, 0); } 60% { clip: rect(90px, 9999px, 11px, 0); } 80% { clip: rect(23px, 9999px, 67px, 0); } 100% { clip: rect(56px, 9999px, 42px, 0); } }
 
         .brutal-border {
             border: 2px solid #333;
@@ -138,48 +126,31 @@
             background-size: 30px 30px;
         }
 
-        /* Rutas de animación de datos (Data Flow) */
-        @keyframes movePacketLeft {
-            0% { top: 0; left: 16.66%; opacity: 0; }
-            5% { opacity: 1; }
-            35% { top: 60px; left: 16.66%; }
-            65% { top: 60px; left: 50%; }
-            95% { top: 120px; left: 50%; opacity: 1; }
-            100% { top: 120px; left: 50%; opacity: 0; }
-        }
+        /* Data Flow Animations */
+        @keyframes movePacketLeft { 0% { top: 0; left: 16.66%; opacity: 0; } 5% { opacity: 1; } 35% { top: 60px; left: 16.66%; } 65% { top: 60px; left: 50%; } 95% { top: 120px; left: 50%; opacity: 1; } 100% { top: 120px; left: 50%; opacity: 0; } }
+        @keyframes movePacketRight { 0% { top: 0; right: 16.66%; opacity: 0; } 5% { opacity: 1; } 35% { top: 60px; right: 16.66%; } 65% { top: 60px; right: 50%; } 95% { top: 120px; right: 50%; opacity: 1; } 100% { top: 120px; right: 50%; opacity: 0; } }
+        @keyframes movePacketDown { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { top: 100%; opacity: 1; } 100% { top: 100%; opacity: 0; } }
 
-        @keyframes movePacketRight {
-            0% { top: 0; right: 16.66%; opacity: 0; }
-            5% { opacity: 1; }
-            35% { top: 60px; right: 16.66%; }
-            65% { top: 60px; right: 50%; }
-            95% { top: 120px; right: 50%; opacity: 1; }
-            100% { top: 120px; right: 50%; opacity: 0; }
-        }
+        .packet-left { animation: movePacketLeft 3s infinite linear; }
+        .packet-right { animation: movePacketRight 3.5s infinite linear; animation-delay: 1.5s; }
+        .packet-down { animation: movePacketDown 3s infinite linear; }
+        .packet-down-delayed { animation: movePacketDown 3s infinite linear; animation-delay: 1.5s; }
 
-        @keyframes movePacketDown {
-            0% { top: 0; opacity: 0; }
-            10% { opacity: 1; }
-            90% { top: 100%; opacity: 1; }
-            100% { top: 100%; opacity: 0; }
+        /* Infinite Marquee Fix */
+        .marquee-wrapper {
+            display: flex;
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
         }
-
-        .packet-left {
-            animation: movePacketLeft 3s infinite linear;
+        .marquee-content {
+            display: flex;
+            flex-shrink: 0;
+            animation: marquee 25s linear infinite;
         }
-        
-        .packet-right {
-            animation: movePacketRight 3.5s infinite linear;
-            animation-delay: 1.5s;
-        }
-
-        .packet-down {
-            animation: movePacketDown 3s infinite linear;
-        }
-
-        .packet-down-delayed {
-            animation: movePacketDown 3s infinite linear;
-            animation-delay: 1.5s;
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
         }
     </style>
 </head>
@@ -199,11 +170,12 @@
                 </div>
                 <div class="hidden md:flex space-x-8">
                     <a href="#features" class="hover:text-neon-yellow transition-colors">[ CORE ]</a>
+                    <a href="#dual-engine" class="hover:text-neon-blue transition-colors">[ ENGINES ]</a>
                     <a href="#architecture" class="hover:text-neon-green transition-colors">[ ARQ ]</a>
-                    <a href="#tools" class="hover:text-neon-purple transition-colors">[ MCP ]</a>
+                    <a href="#tools" class="hover:text-neon-purple transition-colors">[ MCP_API ]</a>
                 </div>
                 <div>
-                    <a href="#install" class="bg-white text-black font-bold px-4 py-2 hover:bg-neon-yellow transition-colors uppercase tracking-wider text-xs border border-white">
+                    <a href="#install" id="nav-init" class="bg-white text-black font-bold px-4 py-2 hover:bg-neon-yellow transition-colors uppercase tracking-wider text-xs border border-white">
                         Init Sequence
                     </a>
                 </div>
@@ -225,12 +197,13 @@
                         SINGULARITY
                     </h1>
                     <p class="font-mono text-base-400 max-w-xl text-sm leading-relaxed border-l-2 border-neon-purple pl-4">
-                        Motor de orquestación para agentes autónomos. Patrón Blackboard nativo. <strong class="text-white font-bold">Optimizado estratégicamente para modelos de IA que facturan por <i>request</i> (no por token).</strong> Lee y escribe el estado sin comunicación directa. Aislamiento absoluto.
+                        Motor de memoria y orquestación para IA. Patrón Blackboard nativo. <strong class="text-white">Sistema Dual-Engine (Core + Particle).</strong> Máxima autonomía con edición de código quirúrgica vía AST. Optimizado para facturación por request.
                     </p>
                     <div class="flex flex-wrap gap-4 font-mono text-sm">
-                        <a href="#install" class="bg-neon-yellow text-black px-6 py-3 font-bold hover:bg-white transition-colors flex items-center gap-2 shadow-brutal-white border border-black">
+                        <button id="btn-ejecutar" class="bg-neon-yellow text-black px-6 py-3 font-bold hover:bg-white transition-colors flex items-center gap-2 shadow-brutal-white border border-black group">
                             > EJECUTAR
-                        </a>
+                            <div class="w-2 h-2 bg-black rounded-full group-hover:animate-ping"></div>
+                        </button>
                         <a href="https://github.com/elbader17/singularity" target="_blank" class="bg-base-800 border-2 border-base-600 text-white px-6 py-3 font-bold hover:border-neon-purple transition-colors flex items-center gap-2">
                             LEER_DOCS
                         </a>
@@ -242,20 +215,11 @@
                     <div class="absolute top-0 right-0 p-2 text-base-600 group-hover:text-neon-green transition-colors">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
                     </div>
-                    <div class="bg-base-800 p-6 h-full text-gray-300">
+                    <div class="bg-base-800 p-6 h-64 overflow-y-auto text-gray-300 custom-scrollbar" id="terminal-screen">
                         <div class="text-base-500 mb-4">root@singularity-host:~#</div>
-                        <div class="space-y-2">
-                            <p><span class="text-neon-yellow">➜</span> git clone https://github.com/elbader17/singularity.git</p>
-                            <p><span class="text-neon-yellow">➜</span> cd singularity</p>
-                            <p><span class="text-neon-yellow">➜</span> go build -o singularity ./cmd/singularity</p>
-                            <p><span class="text-neon-yellow">➜</span> ./singularity init</p>
-                            <p class="text-neon-green mt-4">
-                                [OK] Configuración inyectada en ~/.config/opencode/opencode.jsonc
-                            </p>
-                            <p class="text-base-400">
-                                [INFO] MCP Server listo para conexiones entrantes.
-                            </p>
-                            <div class="flex items-center gap-2 mt-4">
+                        <div id="terminal-output" class="space-y-2">
+                            <p><span class="text-neon-yellow">➜</span> Esperando comando de inicialización...</p>
+                            <div class="flex items-center gap-2 mt-4 cursor-blink">
                                 <span class="text-neon-yellow">➜</span> <span class="w-2 h-4 bg-white animate-pulse"></span>
                             </div>
                         </div>
@@ -264,148 +228,158 @@
             </div>
         </div>
 
-        <!-- Marquee / Ticker -->
-        <div class="w-full border-y-2 border-base-700 bg-base-800 mt-32 overflow-hidden py-3 font-mono text-xs uppercase text-base-400 whitespace-nowrap flex items-center">
-            <div class="animate-[marquee_20s_linear_infinite] inline-block">
-                <span>[ ZERO PING-PONG ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ COST OPTIMIZED ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ PER-REQUEST EFFICIENCY ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ DAG ORCHESTRATION ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ ISOLATED SUB-AGENTS ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ DEEP ARCHIVE ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ COST OPTIMIZED ]</span> <span class="mx-4 text-neon-purple">///</span>
-                <span>[ DAG ORCHESTRATION ]</span> <span class="mx-4 text-neon-purple">///</span>
+        <!-- Marquee / Ticker FIX: Perfect Infinite Loop -->
+        <div class="w-full border-y-2 border-base-700 bg-base-800 mt-32 py-3 font-mono text-xs uppercase text-base-400 marquee-wrapper">
+            <div class="marquee-content">
+                <!-- Fragment 1 -->
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ZERO PING-PONG ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-blue">[ DUAL ENGINE SYSTEM ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ AST SURGERY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DAG ORCHESTRATION ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-green">[ PROGRESSIVE DISCLOSURE ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ISOLATED SUB-AGENTS ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ PER-REQUEST EFFICIENCY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DEEP ARCHIVE ]</span>
+                <!-- Exact Duplicate of Fragment 1 to create seamless loop -->
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ZERO PING-PONG ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-blue">[ DUAL ENGINE SYSTEM ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ AST SURGERY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DAG ORCHESTRATION ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-green">[ PROGRESSIVE DISCLOSURE ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ISOLATED SUB-AGENTS ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ PER-REQUEST EFFICIENCY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DEEP ARCHIVE ]</span>
+            </div>
+            <!-- Second duplicated container for the animation to scroll cleanly out of frame -->
+            <div class="marquee-content">
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ZERO PING-PONG ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-blue">[ DUAL ENGINE SYSTEM ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ AST SURGERY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DAG ORCHESTRATION ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-green">[ PROGRESSIVE DISCLOSURE ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ISOLATED SUB-AGENTS ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ PER-REQUEST EFFICIENCY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DEEP ARCHIVE ]</span>
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ZERO PING-PONG ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-blue">[ DUAL ENGINE SYSTEM ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ AST SURGERY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DAG ORCHESTRATION ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span class="text-neon-green">[ PROGRESSIVE DISCLOSURE ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ ISOLATED SUB-AGENTS ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ PER-REQUEST EFFICIENCY ]</span> 
+                <span class="mx-4 text-neon-purple">///</span> <span>[ DEEP ARCHIVE ]</span>
             </div>
         </div>
 
-        <!-- Core Features -->
-        <div id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-32">
+        <!-- NEW: Dual Engine Section -->
+        <div id="dual-engine" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-32">
             <h2 class="text-4xl font-bold mb-12 flex items-center gap-4">
-                <span class="w-8 h-8 bg-neon-green flex items-center justify-center text-black text-xl">/</span>
-                <span class="text-white">CORE.SYS</span>
+                <span class="w-8 h-8 bg-neon-blue flex items-center justify-center text-black text-xl">/</span>
+                <span class="text-white">DUAL_ENGINE.SYS</span>
             </h2>
+            <p class="font-mono text-base-400 mb-8 max-w-2xl text-sm">El sistema provee dos motores especializados. Selecciona el vector de aproximación correcto basándote en el modelo LLM y el radio de impacto de la tarea.</p>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
-                <div class="bg-base-800 p-6 brutal-border">
-                    <div class="text-neon-green mb-4">01 // ACT_BRAIN</div>
-                    <h3 class="text-white font-bold text-xl mb-2 font-display">Cerebro Activo</h3>
-                    <p class="text-sm text-base-400">Estado del proyecto inyectado sin costo de API externo. Contexto inmediato 100% disponible offline.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 font-mono">
+                <!-- CORE ENGINE -->
+                <div class="bg-base-800 border-2 border-neon-purple p-8 shadow-[0_0_20px_rgba(176,38,255,0.1)] relative group">
+                    <div class="absolute top-0 right-0 bg-neon-purple text-black text-xs font-bold px-3 py-1">@core</div>
+                    <div class="text-neon-purple mb-4 flex items-center gap-3">
+                        <i data-lucide="brain-circuit" class="w-8 h-8"></i>
+                        <h3 class="text-2xl font-display text-white">CORE ENGINE</h3>
+                    </div>
+                    <div class="border-l-2 border-base-600 pl-4 mb-6">
+                        <p class="text-sm text-base-400 italic">"Think deeply, act once."</p>
+                    </div>
+                    <ul class="space-y-3 text-sm text-base-300 mb-6">
+                        <li class="flex items-start gap-2"><span class="text-neon-purple shrink-0 mt-0.5">»</span> <span><strong>Contexto:</strong> Denso / Máximo disponible.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-purple shrink-0 mt-0.5">»</span> <span><strong>Estrategia:</strong> Planeación y delegación.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-purple shrink-0 mt-0.5">»</span> <span><strong>Caso de uso:</strong> Tareas multi-paso complejas.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-purple shrink-0 mt-0.5">»</span> <span><strong>LLM Ideal:</strong> MiniMax, modelos o1, y APIs facturadas por <em>request</em>.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-purple shrink-0 mt-0.5">»</span> <span><strong>Economía:</strong> Exprime al máximo las ventanas de contexto gigantes. Al no importar el peso en tokens, es ideal si pagas una tarifa por petición.</span></li>
+                    </ul>
+                    <div class="bg-black p-4 text-xs text-base-500 border border-base-700">
+                        <span class="text-neon-red">REGLA:</span> Nunca escribe código directamente. Analiza la totalidad del repositorio usando <code class="text-white">get_active_brain()</code> y lanza sub-agentes para la ejecución.
+                    </div>
                 </div>
-                <div class="bg-base-800 p-6 brutal-border">
-                    <div class="text-neon-purple mb-4">02 // DEEP_ARCH</div>
-                    <h3 class="text-white font-bold text-xl mb-2 font-display">Archivo Profundo</h3>
-                    <p class="text-sm text-base-400">Contexto histórico bajo demanda. Mantiene la ventana de tokens enfocada y evita alucinaciones por exceso de ruido.</p>
-                </div>
-                <div class="bg-base-800 p-6 brutal-border">
-                    <div class="text-neon-yellow mb-4">03 // DAG_TASK</div>
-                    <h3 class="text-white font-bold text-xl mb-2 font-display">Orquestación DAG</h3>
-                    <p class="text-sm text-base-400">Dependencias estructurales en grafos. El caos de la inteligencia generativa se somete a la topología matemática estricta.</p>
-                </div>
-                <div class="bg-base-800 p-6 brutal-border">
-                    <div class="text-white mb-4">04 // ISO_ENV</div>
-                    <h3 class="text-white font-bold text-xl mb-2 font-display">Agentes Aislados</h3>
-                    <p class="text-sm text-base-400">Zero contaminación cruzada. Cada sub-agente recibe solo las variables de su ecuación, aumentando la precisión en modelos de razonamiento.</p>
-                </div>
-                <div class="bg-base-800 p-6 brutal-border lg:col-span-2 relative overflow-hidden">
-                    <div class="absolute right-0 top-0 w-32 h-32 bg-neon-red/10 blur-3xl rounded-full"></div>
-                    <div class="text-neon-red mb-4 relative z-10">05 // ZRO_PING</div>
-                    <h3 class="text-white font-bold text-xl mb-2 font-display relative z-10">Ejecución en un Hit <span class="text-neon-yellow text-sm ml-2">[COST OPTIMIZED]</span></h3>
-                    <p class="text-sm text-base-400 max-w-lg relative z-10">Un request = acción completa. <strong class="text-white font-bold">Vital para planes de IA que facturan por petición, no por volumen de tokens.</strong> Eliminación radical de "charlas exploratorias" (ping-pong) con la API. Deducción algorítmica y mutación de estado en una sola pasada.</p>
+
+                <!-- PARTICLE ENGINE -->
+                <div class="bg-base-800 border-2 border-neon-green p-8 shadow-[0_0_20px_rgba(0,255,65,0.05)] relative group">
+                    <div class="absolute top-0 right-0 bg-neon-green text-black text-xs font-bold px-3 py-1">@particle</div>
+                    <div class="text-neon-green mb-4 flex items-center gap-3">
+                        <i data-lucide="microscope" class="w-8 h-8"></i>
+                        <h3 class="text-2xl font-display text-white">PARTICLE ENGINE</h3>
+                    </div>
+                    <div class="border-l-2 border-base-600 pl-4 mb-6">
+                        <p class="text-sm text-base-400 italic">"Precision over volume."</p>
+                    </div>
+                    <ul class="space-y-3 text-sm text-base-300 mb-6">
+                        <li class="flex items-start gap-2"><span class="text-neon-green shrink-0 mt-0.5">»</span> <span><strong>Contexto:</strong> Mínimo / Divulgación progresiva.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-green shrink-0 mt-0.5">»</span> <span><strong>Estrategia:</strong> Edición AST función por función.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-green shrink-0 mt-0.5">»</span> <span><strong>Caso de uso:</strong> Fixes rápidos, refactoring atómico.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-green shrink-0 mt-0.5">»</span> <span><strong>LLM Ideal:</strong> Flash, Haiku y modelos facturados por <em>token</em>.</span></li>
+                        <li class="flex items-start gap-2"><span class="text-neon-green shrink-0 mt-0.5">»</span> <span><strong>Economía:</strong> Minimiza el gasto enviando fragmentos quirúrgicos en lugar de archivos enteros, reduciendo el costo por token hasta un 95%.</span></li>
+                    </ul>
+                    <div class="bg-black p-4 text-xs text-base-500 border border-base-700">
+                        <span class="text-neon-yellow">TOKEN SAVER:</span> ~95% reducción. Usa <code class="text-white">get_file_skeleton</code> para escanear, <code class="text-white">read_function</code> para aislar y <code class="text-white">replace_function</code> para mutar.
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Architecture - Schematic View -->
+        <!-- Architecture - Topology View -->
         <div id="architecture" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-40">
             <h2 class="text-4xl font-bold mb-12 flex items-center gap-4">
-                <span class="w-8 h-8 bg-neon-purple flex items-center justify-center text-white text-xl">/</span>
+                <span class="w-8 h-8 bg-white flex items-center justify-center text-black text-xl">/</span>
                 <span class="text-white">TOPOLOGY</span>
             </h2>
 
-            <div class="relative bg-base-900 border-2 border-base-700 p-8 font-mono shadow-brutal-purple overflow-hidden">
-                <div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(#b026ff 1px, transparent 1px); background-size: 20px 20px;"></div>
+            <div class="relative bg-base-900 border-2 border-base-700 p-4 md:p-8 font-mono overflow-hidden">
+                <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 20px 20px;"></div>
                 
-                <div class="text-xs text-neon-purple mb-8 border-b border-base-700 pb-2 inline-block uppercase tracking-widest">>> Blackboard_Pattern_Engine</div>
+                <div class="text-xs text-base-400 mb-8 border-b border-base-700 pb-2 inline-block uppercase tracking-widest">Singularity_Server_Graph</div>
 
-                <!-- Storage Nodes -->
-                <div class="flex flex-col md:flex-row justify-around items-center gap-6 relative z-10 mb-16">
-                    <div class="border border-neon-green bg-base-800 p-4 text-center w-full md:w-48 shadow-[0_0_15px_rgba(0,255,65,0.2)]">
-                        <div class="text-xs text-base-500 mb-1">MEM_01</div>
-                        <div class="font-bold text-neon-green">ACTIVE BRAIN</div>
+                <!-- STATE LAYER -->
+                <div class="text-[10px] text-neon-yellow mb-2 tracking-widest">>> PERSISTENCE_LAYER (BADGER DB)</div>
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 relative z-10 mb-12">
+                    <div class="border border-base-600 bg-base-800 p-3 text-center w-full shadow-brutal-white">
+                        <div class="font-bold text-white text-sm">ACTIVE BRAIN</div>
+                        <div class="text-[10px] text-base-500">STATE / DAG</div>
                     </div>
-                    <div class="border border-base-600 bg-base-800 p-4 text-center w-full md:w-48">
-                        <div class="text-xs text-base-500 mb-1">MEM_02</div>
-                        <div class="font-bold text-white">DEEP ARCHIVE</div>
+                    <div class="border border-base-600 bg-base-800 p-3 text-center w-full">
+                        <div class="font-bold text-base-300 text-sm">CODE AST</div>
+                        <div class="text-[10px] text-base-500">FUNCTIONS</div>
                     </div>
-                    <div class="border border-base-600 bg-base-800 p-4 text-center w-full md:w-48">
-                        <div class="text-xs text-base-500 mb-1">Q_01</div>
-                        <div class="font-bold text-white">TASK DAG</div>
-                    </div>
-                </div>
-
-                <!-- Visual Connector Logic (Mobile) -->
-                <div class="block md:hidden absolute top-[100px] bottom-[150px] left-1/2 -translate-x-1/2 w-[2px] bg-base-700 pointer-events-none z-0">
-                    <!-- Animated Data Packet (Moving down) -->
-                    <div class="absolute w-2 h-2 bg-neon-green left-1/2 -translate-x-1/2 shadow-[0_0_10px_#00ff41] packet-down z-20"></div>
-                    <!-- Animated Data Packet 2 (Moving down, delayed) -->
-                    <div class="absolute w-2 h-2 bg-neon-yellow left-1/2 -translate-x-1/2 shadow-[0_0_10px_#ccff00] packet-down-delayed z-20"></div>
-                </div>
-
-                <!-- Visual Connector Logic (Desktop) -->
-                <div class="hidden md:block absolute top-[140px] left-0 right-0 h-[120px] pointer-events-none z-0">
-                    <!-- Horizontal Bus -->
-                    <div class="absolute top-[60px] left-[16.66%] right-[16.66%] h-[2px] bg-base-700"></div>
-                    
-                    <!-- Left Vertical Drop -->
-                    <div class="absolute top-0 left-[16.66%] w-[2px] h-[60px] bg-base-700"></div>
-                    
-                    <!-- Right Vertical Drop -->
-                    <div class="absolute top-0 right-[16.66%] w-[2px] h-[60px] bg-base-700"></div>
-                    
-                    <!-- Center Vertical Drop (Archive to Orchestrator) -->
-                    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-[120px] bg-neon-purple/30 border-l-2 border-dashed border-neon-purple"></div>
-                    
-                    <!-- Center Vertical Drop (Bus to Orchestrator) -->
-                    <div class="absolute top-[60px] left-1/2 -translate-x-1/2 w-[2px] h-[60px] bg-base-700"></div>
-
-                    <!-- Animated Data Packet (Center Pulse Node) -->
-                    <div class="absolute top-[60px] left-1/2 w-4 h-4 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-10">
-                        <div class="w-full h-full bg-neon-green/30 rounded-sm animate-ping absolute"></div>
-                        <div class="w-2 h-2 bg-neon-green shadow-[0_0_10px_#00ff41]"></div>
-                    </div>
-
-                    <!-- Animated Data Packet (Moving down from Brain) -->
-                    <div class="absolute w-2 h-2 bg-neon-green -translate-x-1/2 -translate-y-1/2 shadow-[0_0_10px_#00ff41] packet-left z-20"></div>
-                    
-                    <!-- Animated Data Packet (Moving down from Tasks) -->
-                    <div class="absolute w-2 h-2 bg-neon-yellow translate-x-1/2 -translate-y-1/2 shadow-[0_0_10px_#ccff00] packet-right z-20"></div>
-                </div>
-
-                <!-- Agent Nodes -->
-                <div class="flex flex-col md:flex-row justify-center items-center gap-6 relative z-10 mt-16 md:mt-24">
-                    <div class="border-2 border-neon-yellow bg-black p-4 text-center w-full md:w-64 relative group">
-                        <div class="absolute -top-3 -right-3 bg-neon-yellow text-black text-xs font-bold px-2 py-1">ROOT</div>
-                        <div class="font-bold text-white text-lg">ORCHESTRATOR</div>
-                        <div class="text-xs text-base-500 mt-2">GLOBAL.STATE.R/W</div>
-                    </div>
-                </div>
-                
-                <div class="flex flex-col md:flex-row justify-center items-center gap-6 relative z-10 mt-6">
-                    <div class="border border-base-600 bg-base-800 p-3 text-center w-full md:w-48">
-                        <div class="text-sm font-bold text-base-300">SUB-AGENT_A</div>
-                        <div class="text-[10px] text-base-600 mt-1">ISOLATED.CTX</div>
-                    </div>
-                    <div class="border border-base-600 bg-base-800 p-3 text-center w-full md:w-48">
-                        <div class="text-sm font-bold text-base-300">SUB-AGENT_B</div>
-                        <div class="text-[10px] text-base-600 mt-1">ISOLATED.CTX</div>
+                    <div class="border border-base-600 bg-base-800 p-3 text-center w-full">
+                        <div class="font-bold text-base-300 text-sm">DEEP ARCHIVE</div>
+                        <div class="text-[10px] text-base-500">HISTORY</div>
                     </div>
                 </div>
 
-                <!-- Lower metrics -->
-                <div class="mt-12 pt-6 border-t border-base-700 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div class="text-base-400"><span class="text-white">internal/storage</span> » BadgerDB persistence</div>
-                    <div class="text-base-400"><span class="text-white">internal/mcp</span> » Tool exposition layer</div>
-                    <div class="text-base-400"><span class="text-white">internal/protocol</span> » Context injection</div>
+                <!-- ENGINE LAYER -->
+                <div class="text-[10px] text-neon-blue mb-2 tracking-widest mt-12">>> ENGINE_LAYER</div>
+                <div class="flex flex-col md:flex-row justify-center items-center gap-8 relative z-10 mb-12">
+                    <div class="border-2 border-neon-purple bg-black p-4 text-center w-full md:w-1/2 relative">
+                        <div class="font-bold text-neon-purple text-lg">CORE ENGINE</div>
+                        <div class="text-xs text-base-400 mt-1 mb-3">DENSE CONTEXT / DELEGATION</div>
+                        <div class="bg-base-800 p-2 text-[10px] text-left text-base-300 grid grid-cols-2 gap-1 border border-base-700">
+                            <span>> spawn_sub_agent</span><span>> get_active_brain</span>
+                            <span>> plan_and_delegate</span><span>> commit_world_state</span>
+                        </div>
+                    </div>
+                    <div class="border-2 border-neon-green bg-black p-4 text-center w-full md:w-1/2 relative">
+                        <div class="font-bold text-neon-green text-lg">PARTICLE ENGINE</div>
+                        <div class="text-xs text-base-400 mt-1 mb-3">AST SURGERY / PROG_DISCLOSURE</div>
+                        <div class="bg-base-800 p-2 text-[10px] text-left text-base-300 grid grid-cols-2 gap-1 border border-base-700">
+                            <span>> get_file_skeleton</span><span>> read_function</span>
+                            <span>> replace_function</span><span>> sync_dag_metadata</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REGISTRY -->
+                <div class="border border-base-600 bg-base-800 p-3 text-center w-full mx-auto max-w-md text-xs relative z-10">
+                    <span class="text-base-400">TOOL REGISTRY:</span> 
+                    <span class="text-white ml-2">switch_engine | get_engine_info</span>
                 </div>
             </div>
         </div>
@@ -413,163 +387,133 @@
         <!-- MCP Tools Interface -->
         <div id="tools" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-40">
             <h2 class="text-4xl font-bold mb-12 flex items-center gap-4">
-                <span class="w-8 h-8 bg-neon-yellow flex items-center justify-center text-black text-xl">/</span>
+                <span class="w-8 h-8 bg-neon-red flex items-center justify-center text-white text-xl">/</span>
                 <span class="text-white">MCP.API</span>
             </h2>
 
-            <div class="flex flex-col lg:flex-row h-[600px] border-2 border-base-700 bg-base-900 shadow-brutal-white">
+            <div class="flex flex-col lg:flex-row h-[700px] border-2 border-base-700 bg-base-900 shadow-brutal-white">
                 <!-- Sidebar -->
-                <div class="w-full lg:w-1/3 flex flex-col border-b-2 lg:border-b-0 lg:border-r-2 border-base-700 overflow-y-auto bg-base-900" id="tool-tabs">
-                    <div class="p-4 text-xs font-mono text-base-500 uppercase tracking-widest border-b border-base-800">Available Methods</div>
+                <div class="w-full lg:w-1/3 flex flex-col border-b-2 lg:border-b-0 lg:border-r-2 border-base-700 overflow-y-auto bg-base-900 custom-scrollbar" id="tool-tabs">
                     
-                    <button onclick="switchTool('commit_world_state')" id="tab-commit_world_state" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-neon-red bg-base-800 text-white">
-                        commit_world_state()
-                    </button>
-                    <button onclick="switchTool('get_active_brain')" id="tab-get_active_brain" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-transparent text-base-400 hover:bg-base-800 hover:text-white">
-                        get_active_brain()
-                    </button>
-                    <button onclick="switchTool('list_tasks')" id="tab-list_tasks" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-transparent text-base-400 hover:bg-base-800 hover:text-white">
-                        list_tasks()
-                    </button>
-                    <button onclick="switchTool('fetch_deep_context')" id="tab-fetch_deep_context" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-transparent text-base-400 hover:bg-base-800 hover:text-white">
-                        fetch_deep_context()
-                    </button>
-                    <button onclick="switchTool('spawn_sub_agent')" id="tab-spawn_sub_agent" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-transparent text-base-400 hover:bg-base-800 hover:text-white">
-                        spawn_sub_agent()
-                    </button>
-                    <button onclick="switchTool('get_sub_agent_task')" id="tab-get_sub_agent_task" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-transparent text-base-400 hover:bg-base-800 hover:text-white">
-                        get_sub_agent_task()
-                    </button>
-                    <button onclick="switchTool('complete_sub_agent_task')" id="tab-complete_sub_agent_task" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-transparent text-base-400 hover:bg-base-800 hover:text-white">
-                        complete_sub_agent_task()
-                    </button>
-                    <button onclick="switchTool('switch_agent')" id="tab-switch_agent" class="text-left w-full px-4 py-4 font-mono text-sm transition-all border-l-4 border-transparent text-base-400 hover:bg-base-800 hover:text-white">
-                        switch_agent()
-                    </button>
+                    <div class="p-3 text-[10px] font-bold font-mono text-neon-purple uppercase bg-base-800/50 sticky top-0">[ CORE / STATE ]</div>
+                    <button onclick="switchTool('commit_world_state')" id="tab-commit_world_state" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-neon-red bg-base-800 text-white hover:bg-base-800">commit_world_state()</button>
+                    <button onclick="switchTool('get_active_brain')" id="tab-get_active_brain" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">get_active_brain()</button>
+                    <button onclick="switchTool('list_tasks')" id="tab-list_tasks" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">list_tasks()</button>
+                    <button onclick="switchTool('spawn_sub_agent')" id="tab-spawn_sub_agent" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">spawn_sub_agent()</button>
+                    <button onclick="switchTool('switch_agent')" id="tab-switch_agent" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">switch_agent()</button>
+
+                    <div class="p-3 text-[10px] font-bold font-mono text-neon-green uppercase bg-base-800/50 sticky top-0 border-t border-base-700">[ PARTICLE / AST ]</div>
+                    <button onclick="switchTool('get_file_skeleton')" id="tab-get_file_skeleton" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">get_file_skeleton()</button>
+                    <button onclick="switchTool('read_function')" id="tab-read_function" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">read_function()</button>
+                    <button onclick="switchTool('replace_function')" id="tab-replace_function" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">replace_function()</button>
+                    
+                    <div class="p-3 text-[10px] font-bold font-mono text-neon-blue uppercase bg-base-800/50 sticky top-0 border-t border-base-700">[ ENGINE MGMT ]</div>
+                    <button onclick="switchTool('switch_engine')" id="tab-switch_engine" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">switch_engine()</button>
+                    <button onclick="switchTool('get_engine_info')" id="tab-get_engine_info" class="text-left w-full px-4 py-3 font-mono text-sm border-l-4 border-transparent text-base-400 hover:text-white hover:bg-base-800">get_engine_info()</button>
+
                 </div>
 
                 <!-- Code Area -->
                 <div class="w-full lg:w-2/3 bg-black relative flex flex-col font-mono">
                     <div class="flex items-center gap-4 px-4 py-2 border-b border-base-800 text-xs text-base-600 bg-base-900">
-                        <span class="text-neon-yellow">PAYLOAD</span>
-                        <span>|</span>
-                        <span>JSON</span>
+                        <span class="text-neon-yellow">PAYLOAD</span><span>|</span><span>JSON</span>
                     </div>
                     
-                    <div class="p-6 overflow-y-auto flex-1 text-sm md:text-base leading-relaxed">
+                    <div class="p-6 overflow-y-auto flex-1 text-sm md:text-base leading-relaxed custom-scrollbar" id="content-area">
                         <!-- commit_world_state -->
                         <div id="content-commit_world_state" class="tool-content">
                             <div class="mb-6 border-l-2 border-neon-red pl-4 text-base-400 text-sm">
-                                <span class="text-neon-red font-bold uppercase block mb-1">>> Mandatory Execution</span>
+                                <span class="text-neon-red font-bold uppercase block mb-1">>> Mandatory Execution (Core)</span>
                                 Consolida el estado tras mutación. Inyecta insights en el Brain.
                             </div>
 <pre class="text-base-300"><span class="text-white">{</span>
   <span class="text-neon-purple">"session_id"</span>: <span class="text-neon-green">"ses-123"</span>,
-  <span class="text-neon-purple">"project_path"</span>: <span class="text-neon-green">"/path/to/project"</span>,
   <span class="text-neon-purple">"completed_task_id"</span>: <span class="text-neon-green">"task-456"</span>,
   <span class="text-neon-purple">"task_summary"</span>: <span class="text-neon-green">"Implemented login system"</span>,
-  <span class="text-neon-purple">"orchestrator_summary"</span>: <span class="text-neon-green">"Authentication ready for API integration"</span>,
-  <span class="text-neon-purple">"learned_insights"</span>: <span class="text-neon-green">"Auth module has reusable code"</span>
+  <span class="text-neon-purple">"orchestrator_summary"</span>: <span class="text-neon-green">"Auth module is ready"</span>
 <span class="text-white">}</span></pre>
                         </div>
 
                         <!-- get_active_brain -->
                         <div id="content-get_active_brain" class="tool-content hidden">
-                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">
-                                Obtiene snapshot del estado actual. Cero costo API externo.
-                            </div>
-<pre class="text-base-300"><span class="text-base-600">// << Response Buffer >></span>
-<span class="text-white">{</span>
-  <span class="text-neon-purple">"tasks"</span>: <span class="text-neon-yellow">[...]</span>,
-  <span class="text-neon-purple">"recent_decisions"</span>: <span class="text-neon-yellow">[...]</span>,
-  <span class="text-neon-purple">"active_count"</span>: <span class="text-neon-red">2</span>,
-  <span class="text-neon-purple">"pending_count"</span>: <span class="text-neon-red">5</span>,
-  <span class="text-neon-purple">"completed_count"</span>: <span class="text-neon-red">10</span>
-<span class="text-white">}</span></pre>
+                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">Obtiene snapshot del estado actual. Cero costo API externo.</div>
+<pre class="text-base-300"><span class="text-white">{</span> <span class="text-base-600">/* No args needed */</span> <span class="text-white">}</span></pre>
                         </div>
 
-                        <!-- list_tasks -->
-                        <div id="content-list_tasks" class="tool-content hidden">
-                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">
-                                Consulta de topología DAG por estado.
+                        <!-- get_file_skeleton -->
+                        <div id="content-get_file_skeleton" class="tool-content hidden">
+                            <div class="mb-6 border-l-2 border-neon-green pl-4 text-base-400 text-sm">
+                                <span class="text-neon-green font-bold uppercase block mb-1">[Particle Engine]</span>
+                                Obtiene sólo las firmas de funciones y structs (AST base). Ignora implementaciones para ahorrar tokens.
                             </div>
 <pre class="text-base-300"><span class="text-white">{</span>
-  <span class="text-neon-purple">"status"</span>: <span class="text-neon-green">"pending"</span>  <span class="text-base-600">// Enum: pending | in_progress | completed</span>
-<span class="text-white">}</span></pre>
-                        </div>
-
-                        <!-- fetch_deep_context -->
-                        <div id="content-fetch_deep_context" class="tool-content hidden">
-                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">
-                                <span class="text-neon-yellow font-bold uppercase block mb-1">>> Warning</span>
-                                Acceso al Archive. Usar solo ante miss crítico en Active Brain.
-                            </div>
-<pre class="text-base-300"><span class="text-white">{</span>
-  <span class="text-neon-purple">"query"</span>: <span class="text-neon-green">"authentication"</span>,
-  <span class="text-neon-purple">"task_id"</span>: <span class="text-neon-green">"task-123"</span>,  <span class="text-base-600">// Opt</span>
-  <span class="text-neon-purple">"limit"</span>: <span class="text-neon-red">10</span>
-<span class="text-white">}</span></pre>
-                        </div>
-
-                        <!-- spawn_sub_agent -->
-                        <div id="content-spawn_sub_agent" class="tool-content hidden">
-                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">
-                                Bifurcación de proceso. Crea sub-entidad con contexto aislado.
-                            </div>
-<pre class="text-base-300"><span class="text-white">{</span>
-  <span class="text-neon-purple">"session_id"</span>: <span class="text-neon-green">"ses-123"</span>,
-  <span class="text-neon-purple">"project_path"</span>: <span class="text-neon-green">"/path/to/project"</span>,
-  <span class="text-neon-purple">"title"</span>: <span class="text-neon-green">"Implement logout"</span>,
-  <span class="text-neon-purple">"description"</span>: <span class="text-neon-green">"Create logout endpoint"</span>,
-  <span class="text-neon-purple">"context"</span>: <span class="text-neon-green">"Use existing auth/ code"</span>
+  <span class="text-neon-purple">"file_path"</span>: <span class="text-neon-green">"auth/login.go"</span>
 <span class="text-white">}</span>
 
-<span class="text-base-600">// << Spawn Result >></span>
+<span class="text-base-600">// << Response >></span>
+<span class="text-base-600">// package auth</span>
+<span class="text-base-600">// type User struct { ... }</span>
+<span class="text-base-600">// func Login(email, pass string) error</span>
+</pre>
+                        </div>
+
+                        <!-- read_function -->
+                        <div id="content-read_function" class="tool-content hidden">
+                            <div class="mb-6 border-l-2 border-neon-green pl-4 text-base-400 text-sm">
+                                <span class="text-neon-green font-bold uppercase block mb-1">[Particle Engine]</span>
+                                Lee el cuerpo de una función específica extraída del AST.
+                            </div>
+<pre class="text-base-300"><span class="text-white">{</span>
+  <span class="text-neon-purple">"file_path"</span>: <span class="text-neon-green">"auth/login.go"</span>,
+  <span class="text-neon-purple">"function_name"</span>: <span class="text-neon-green">"Login"</span>
+<span class="text-white">}</span></pre>
+                        </div>
+
+                        <!-- replace_function -->
+                        <div id="content-replace_function" class="tool-content hidden">
+                            <div class="mb-6 border-l-2 border-neon-green pl-4 text-base-400 text-sm">
+                                <span class="text-neon-green font-bold uppercase block mb-1">[Particle Engine]</span>
+                                Sobrescribe una única función en el archivo. Mutación quirúrgica con persistencia inmediata en BadgerDB.
+                            </div>
+<pre class="text-base-300"><span class="text-white">{</span>
+  <span class="text-neon-purple">"file_path"</span>: <span class="text-neon-green">"auth/login.go"</span>,
+  <span class="text-neon-purple">"function_name"</span>: <span class="text-neon-green">"Login"</span>,
+  <span class="text-neon-purple">"new_code"</span>: <span class="text-neon-green">"func Login(...) error {\n  if e == \"\" { return Err }\n}"</span>
+<span class="text-white">}</span></pre>
+                        </div>
+
+                        <!-- switch_engine -->
+                        <div id="content-switch_engine" class="tool-content hidden">
+                            <div class="mb-6 border-l-2 border-neon-blue pl-4 text-base-400 text-sm">Cambia en caliente entre el entorno denso (Core) y el quirúrgico (Particle).</div>
+<pre class="text-base-300"><span class="text-white">{</span>
+  <span class="text-neon-purple">"engine_type"</span>: <span class="text-neon-green">"particle"</span>  <span class="text-base-600">// Enum: core | particle</span>
+<span class="text-white">}</span></pre>
+                        </div>
+                        
+                        <!-- get_engine_info -->
+                        <div id="content-get_engine_info" class="tool-content hidden">
+                            <div class="mb-6 border-l-2 border-neon-blue pl-4 text-base-400 text-sm">Verifica bajo qué reglas de motor está operando el agente actualmente.</div>
+<pre class="text-base-300"><span class="text-white">{</span><span class="text-white">}</span>
+
+<span class="text-base-600">// << Response >></span>
 <span class="text-white">{</span>
-  <span class="text-neon-purple">"success"</span>: <span class="text-neon-red">true</span>,
-  <span class="text-neon-purple">"sub_agent_id"</span>: <span class="text-neon-green">"sub-abc123"</span>,
-  <span class="text-neon-purple">"task_id"</span>: <span class="text-neon-green">"task-789"</span>
-<span class="text-white">}</span></pre>
+  <span class="text-neon-purple">"type"</span>: <span class="text-neon-green">"particle"</span>,
+  <span class="text-neon-purple">"description"</span>: <span class="text-neon-green">"Surgical AST editing mode"</span>
+<span class="text-white">}</span>
+</pre>
                         </div>
 
-                        <!-- get_sub_agent_task -->
-                        <div id="content-get_sub_agent_task" class="tool-content hidden">
-                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">
-                                Init sequence para el sub-agente. Recupera sus parámetros de entorno.
-                            </div>
-<pre class="text-base-300"><span class="text-white">{</span>
-  <span class="text-neon-purple">"sub_agent_id"</span>: <span class="text-neon-green">"sub-abc123"</span>
-<span class="text-white">}</span></pre>
-                        </div>
+                        <!-- Others (Fallbacks mapped together to avoid HTML bloat for demo) -->
+                        <div id="content-list_tasks" class="tool-content hidden"><pre class="text-base-300"><span class="text-white">{</span><span class="text-neon-purple">"status"</span>: <span class="text-neon-green">"pending"</span><span class="text-white">}</span></pre></div>
+                        <div id="content-spawn_sub_agent" class="tool-content hidden"><pre class="text-base-300"><span class="text-white">{</span><span class="text-neon-purple">"title"</span>: <span class="text-neon-green">"Task"</span>, <span class="text-neon-purple">"context"</span>: <span class="text-neon-green">"..."</span><span class="text-white">}</span></pre></div>
+                        <div id="content-switch_agent" class="tool-content hidden"><pre class="text-base-300"><span class="text-white">{</span><span class="text-neon-purple">"mode"</span>: <span class="text-neon-green">"sub_agent"</span>, <span class="text-neon-purple">"sub_agent_id"</span>: <span class="text-neon-green">"xyz"</span><span class="text-white">}</span></pre></div>
 
-                        <!-- complete_sub_agent_task -->
-                        <div id="content-complete_sub_agent_task" class="tool-content hidden">
-                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">
-                                Terminación de hilo. Reporte de mutación al Orchestrator.
-                            </div>
-<pre class="text-base-300"><span class="text-white">{</span>
-  <span class="text-neon-purple">"sub_agent_id"</span>: <span class="text-neon-green">"sub-abc123"</span>,
-  <span class="text-neon-purple">"result"</span>: <span class="text-neon-green">"Logout implemented with JWT blacklist"</span>
-<span class="text-white">}</span></pre>
-                        </div>
-
-                        <!-- switch_agent -->
-                        <div id="content-switch_agent" class="tool-content hidden">
-                            <div class="mb-6 border-l-2 border-white pl-4 text-base-400 text-sm">
-                                Context switch de la sesión activa en terminal.
-                            </div>
-<pre class="text-base-300"><span class="text-white">{</span>
-  <span class="text-neon-purple">"mode"</span>: <span class="text-neon-green">"sub_agent"</span>,  <span class="text-base-600">// Enum: sub_agent | orchestrator</span>
-  <span class="text-neon-purple">"sub_agent_id"</span>: <span class="text-neon-green">"sub-abc123"</span>
-<span class="text-white">}</span></pre>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Footer Terminal Style -->
     <footer class="mt-32 border-t-2 border-base-700 bg-black font-mono text-xs py-8 relative z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-2 text-base-400">
@@ -578,48 +522,96 @@
             <div class="flex gap-6 text-base-500">
                 <a href="https://github.com/elbader17/singularity" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">[ GITHUB ]</a>
                 <a href="https://github.com/elbader17/singularity/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">[ MIT LICENSE ]</a>
-                <span class="text-base-600">SYS.VER.1.0</span>
+                <span class="text-base-600">SYS.VER.2.0</span>
             </div>
         </div>
     </footer>
 
-    <!-- CSS Animation for marquee -->
-    <style>
-        @keyframes marquee {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-    </style>
-
-    <!-- Logic Script -->
+    <!-- Script de interacción general -->
     <script>
         lucide.createIcons();
 
+        // Control de pestañas de Herramientas
         function switchTool(toolId) {
             const contents = document.querySelectorAll('.tool-content');
             contents.forEach(content => content.classList.add('hidden'));
 
             const tabs = document.querySelectorAll('#tool-tabs button');
             tabs.forEach(tab => {
-                tab.classList.remove('border-neon-red', 'bg-base-800', 'text-white', 'border-neon-yellow', 'border-neon-green', 'border-neon-purple');
+                tab.classList.remove('border-neon-red', 'border-neon-green', 'border-neon-blue', 'border-neon-purple', 'bg-base-800', 'text-white');
                 tab.classList.add('border-transparent', 'text-base-400');
             });
 
-            document.getElementById(`content-${toolId}`).classList.remove('hidden');
+            const contentElem = document.getElementById(`content-${toolId}`);
+            if(contentElem) contentElem.classList.remove('hidden');
             
             const activeTab = document.getElementById(`tab-${toolId}`);
+            if(!activeTab) return;
             activeTab.classList.remove('border-transparent', 'text-base-400');
             
-            // Assign different neon colors to tabs based on strict logic or random for hacker vibe
-            const colors = ['border-neon-red', 'border-neon-yellow', 'border-neon-green', 'border-neon-purple'];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            
-            if(toolId === 'commit_world_state') {
-                activeTab.classList.add('border-neon-red', 'bg-base-800', 'text-white');
+            // Colores por categoría (lógica hardcodeada para la demo visual)
+            if(['commit_world_state', 'get_active_brain', 'list_tasks', 'spawn_sub_agent', 'switch_agent'].includes(toolId)) {
+                activeTab.classList.add('border-neon-purple', 'bg-base-800', 'text-white');
+            } else if (['get_file_skeleton', 'read_function', 'replace_function'].includes(toolId)) {
+                activeTab.classList.add('border-neon-green', 'bg-base-800', 'text-white');
             } else {
-                activeTab.classList.add(randomColor, 'bg-base-800', 'text-white');
+                activeTab.classList.add('border-neon-blue', 'bg-base-800', 'text-white');
             }
         }
+
+        // Lógica del Botón Ejecutar
+        document.getElementById('btn-ejecutar').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Bloquea múltiples clicks
+            if(this.classList.contains('opacity-50')) return;
+            this.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const terminalOutput = document.getElementById('terminal-output');
+            const terminalScreen = document.getElementById('terminal-screen');
+            
+            // Scroll a la terminal
+            document.getElementById('install').scrollIntoView({behavior: 'smooth', block: 'center'});
+            
+            // Limpia la terminal
+            terminalOutput.innerHTML = '<span class="text-neon-yellow">➜</span> [ROOT_ACCESS_GRANTED]<br>';
+            
+            const lines = [
+                { text: 'git clone https://github.com/elbader17/singularity.git', delay: 400 },
+                { text: '<span class="text-base-500">Cloning into \'singularity\'...<br>remote: Enumerating objects, done.<br>remote: Counting objects: 100% (24/24), done.<br>Receiving objects: 100%</span>', delay: 1200 },
+                { text: 'cd singularity && go build -o singularity ./cmd/singularity', delay: 800 },
+                { text: '<span class="text-base-500">go: downloading dependencies...<br>go: building AST AST-parser module...<br>go: compiling engine logic...</span>', delay: 1800 },
+                { text: './singularity init', delay: 800 },
+                { text: '<span class="text-neon-blue">[DUAL ENGINE DETECTED]</span> Loading @core and @particle presets...', delay: 600 },
+                { text: '<span class="text-neon-green">[OK]</span> MCP Configuration injected successfully into opencode.jsonc', delay: 500 },
+                { text: '<span class="text-white font-bold">Singularity OS is now active on port 8080.</span>', delay: 400 }
+            ];
+
+            let cumulativeDelay = 0;
+
+            lines.forEach((line, index) => {
+                cumulativeDelay += line.delay;
+                setTimeout(() => {
+                    const prefix = line.text.startsWith('<') ? '' : '<span class="text-neon-yellow">➜</span> ';
+                    terminalOutput.innerHTML += `${prefix}${line.text}<br>`;
+                    terminalScreen.scrollTop = terminalScreen.scrollHeight; // Auto-scroll
+                    
+                    // Si es la última línea, reactiva el botón
+                    if(index === lines.length - 1) {
+                        setTimeout(() => {
+                            terminalOutput.innerHTML += '<div class="flex items-center gap-2 mt-4 cursor-blink"><span class="text-neon-yellow">➜</span> <span class="w-2 h-4 bg-white animate-pulse"></span></div>';
+                            terminalScreen.scrollTop = terminalScreen.scrollHeight;
+                            document.getElementById('btn-ejecutar').classList.remove('opacity-50', 'cursor-not-allowed');
+                        }, 500);
+                    }
+                }, cumulativeDelay);
+            });
+        });
+
+        // Event listener simple para Init Sequence en el nav
+        document.getElementById('nav-init').addEventListener('click', (e) => {
+            document.getElementById('btn-ejecutar').click();
+        });
     </script>
 </body>
 </html>
