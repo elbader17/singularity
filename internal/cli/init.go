@@ -125,8 +125,8 @@ func installOpenCode() {
 }`, binPath)
 	}
 
-	// Agregar/actualizar configuración del agente orchestrator
-	finalConfig = ensureOrchestratorAgent(finalConfig, binPath)
+	// Agregar/actualizar configuración de los agentes core y particle
+	finalConfig = ensureCoreAndParticleAgents(finalConfig, binPath)
 
 	if err := os.WriteFile(configFile, []byte(finalConfig), 0644); err != nil {
 		fmt.Printf("Error: no se pudo escribir config: %v\n", err)
@@ -244,8 +244,8 @@ func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
 
-// ensureOrchestratorAgent ensures the orchestrator agent has all required tools for sub-agent management
-func ensureOrchestratorAgent(content, binPath string) string {
+// ensureCoreAndParticleAgents ensures core and particle agents have all required tools
+func ensureCoreAndParticleAgents(content, binPath string) string {
 	// Required tools for sub-agent support
 	requiredTools := []string{
 		"singularity_spawn_sub_agent",
@@ -258,8 +258,8 @@ func ensureOrchestratorAgent(content, binPath string) string {
 		"singularity_fetch_deep_context",
 	}
 
-	// Check if orchestrator agent already exists
-	if strings.Contains(content, `"orchestrator"`) {
+	// Check if core agent already exists
+	if strings.Contains(content, `"core"`) {
 		// Agent exists, check if it has all required tools
 		missingTools := []string{}
 		for _, tool := range requiredTools {
@@ -269,17 +269,22 @@ func ensureOrchestratorAgent(content, binPath string) string {
 		}
 
 		if len(missingTools) > 0 {
-			// Add missing tools to existing agent
 			content = addMissingToolsToAgent(content, missingTools)
 		}
 		return content
 	}
 
-	// Agent doesn't exist, add it with all required tools
-	return addOrchestratorAgent(content, binPath, requiredTools)
+	// Migration: if old "orchestrator" exists, add core and particle
+	if strings.Contains(content, `"orchestrator"`) {
+		content = addCoreAndParticleAgents(content, binPath, requiredTools)
+		return content
+	}
+
+	// Agent doesn't exist, add both core and particle
+	return addCoreAndParticleAgents(content, binPath, requiredTools)
 }
 
-func addOrchestratorAgent(content, binPath string, tools []string) string {
+func addCoreAndParticleAgents(content, binPath string, tools []string) string {
 	// Build tools section
 	toolsStr := `"read": true,
         "write": true,
@@ -295,52 +300,61 @@ func addOrchestratorAgent(content, binPath string, tools []string) string {
 	// Remove trailing comma
 	toolsStr = strings.TrimSuffix(toolsStr, ",")
 
-	orchestratorAgent := fmt.Sprintf(`  "agent": {
-    "orchestrator": {
-      "description": "Implements features using SOLID principles with a rigorous 6-phase workflow",
+	// Create TWO agents: core and particle with DIFFERENT prompts
+	agentConfig := fmt.Sprintf(`  "agent": {
+    "core": {
+      "description": "Agente con contexto denso. Minimiza requests.",
       "mode": "primary",
-      "prompt": "{file:/home/eduardo/project/singularity/prompts/orchestrator.md}",
+      "prompt": "{file:/home/eduardo/project/singularity/prompts/core.md}",
+      "temperature": 0.2,
+      "tools": {
+        %s
+      }
+    },
+    "particle": {
+      "description": "Agente con divulgacion progresiva. Minimiza tokens.",
+      "mode": "primary",
+      "prompt": "{file:/home/eduardo/project/singularity/prompts/particle.md}",
       "temperature": 0.2,
       "tools": {
         %s
       }
     }
-  }`, toolsStr)
+  }`, toolsStr, toolsStr)
 
 	lines := strings.Split(content, "\n")
 	var result []string
 
-	if len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "}" {
-		// Find the last non-empty line
-		lastIdx := len(lines) - 1
-		for lastIdx > 0 && strings.TrimSpace(lines[lastIdx]) == "" {
-			lastIdx--
-		}
-
-		// Add comma to the last real line if it doesn't have one
-		if lastIdx >= 0 {
-			trimmed := strings.TrimSpace(lines[lastIdx])
-			if !strings.HasSuffix(trimmed, ",") && !strings.HasSuffix(trimmed, "{") {
-				lines[lastIdx] = lines[lastIdx] + ","
+	// Find the line that closes the mcp object (second "}" from the end)
+	// The last "}" closes the root object, the second-to-last closes "mcp"
+	// We need to add comma after the mcp closing brace
+	mcpClosingBraceIdx := -1
+	closeBraceCount := 0
+	for i := len(lines) - 1; i >= 0; i-- {
+		trimmed := strings.TrimSpace(lines[i])
+		if trimmed == "}" {
+			closeBraceCount++
+			if closeBraceCount == 2 {
+				// Second closing brace from the end closes "mcp"
+				mcpClosingBraceIdx = i
+				break
 			}
 		}
-
-		// Insert agent section before the closing brace
-		for i := 0; i < len(lines)-1; i++ {
-			result = append(result, lines[i])
-		}
-		result = append(result, orchestratorAgent)
-		result = append(result, "}")
-	} else if len(lines) == 0 || (len(lines) == 1 && strings.TrimSpace(lines[0]) == "") {
-		// Empty file - create complete config with agent
-		result = append(result, "{")
-		result = append(result, orchestratorAgent)
-		result = append(result, "}")
-	} else {
-		result = lines
-		result = append(result, orchestratorAgent)
 	}
 
+	if mcpClosingBraceIdx >= 0 {
+		// Add comma after the mcp closing brace
+		if !strings.HasSuffix(lines[mcpClosingBraceIdx], ",") {
+			lines[mcpClosingBraceIdx] = lines[mcpClosingBraceIdx] + ","
+		}
+	}
+
+	// Insert agent section before the closing brace
+	for i := 0; i < len(lines)-1; i++ {
+		result = append(result, lines[i])
+	}
+	result = append(result, agentConfig)
+	result = append(result, "}")
 	return strings.Join(result, "\n")
 }
 

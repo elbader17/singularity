@@ -9,12 +9,16 @@ import (
 )
 
 const (
-	activeBrainPrefix  = "brain:"    // Cerebro activo (estado del mundo)
-	deepArchivePrefix  = "archive:"  // Archivo profundo
-	taskPrefix         = "task:"     // Tareas
-	sessionPrefix      = "session:"  // Sesiones
-	subAgentPrefix     = "subagent:" // Sub-agentes
-	subAgentTaskPrefix = "subtask:"  // Tareas de sub-agentes
+	activeBrainPrefix       = "brain:"    // Cerebro activo (estado del mundo)
+	deepArchivePrefix       = "archive:"  // Archivo profundo
+	taskPrefix              = "task:"     // Tareas
+	sessionPrefix           = "session:"  // Sesiones
+	subAgentPrefix          = "subagent:" // Sub-agentes
+	subAgentTaskPrefix      = "subtask:"  // Tareas de sub-agentes
+	dagMetadataPrefix       = "dag:"      // Metadatos del DAG
+	compressedHistoryPrefix = "ch:"       // Historial comprimido
+	codeSkeletonPrefix      = "skeleton:" // Esqueletos de archivos (para AST)
+	functionCachePrefix     = "fncache:"  // Cache de funciones
 )
 
 type BadgerDB struct {
@@ -130,3 +134,14 @@ func TaskPrefix() string               { return taskPrefix }
 func SessionPrefix() string            { return sessionPrefix }
 func SubAgentPrefix() string           { return subAgentPrefix }
 func SubAgentTaskPrefix() string       { return subAgentTaskPrefix }
+func DAGMetadataPrefix() string        { return dagMetadataPrefix }
+func CompressedHistoryPrefix() string  { return compressedHistoryPrefix }
+func CodeSkeletonPrefix() string       { return codeSkeletonPrefix }
+func FunctionCachePrefix() string      { return functionCachePrefix }
+
+func DAGMetadataKey(sessionID string) string       { return dagMetadataPrefix + sessionID }
+func CompressedHistoryKey(sessionID string) string { return compressedHistoryPrefix + sessionID }
+func CodeSkeletonKey(filePath string) string       { return codeSkeletonPrefix + filePath }
+func FunctionCacheKey(filePath, fnName string) string {
+	return functionCachePrefix + filePath + ":" + fnName
+}

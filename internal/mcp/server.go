@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"singularity/internal/agents"
 	"singularity/internal/models"
 	"singularity/internal/storage"
 
@@ -19,8 +20,9 @@ import (
 )
 
 type Server struct {
-	db *storage.BadgerDB
-	s  *server.MCPServer
+	db           *storage.BadgerDB
+	s            *server.MCPServer
+	activeEngine agents.AgentEngine
 }
 
 func NewServer(db *storage.BadgerDB) *Server {
@@ -36,10 +38,66 @@ func NewServer(db *storage.BadgerDB) *Server {
 		s:  s,
 	}
 
+	// Inicializar motors y registrar herramientas
+	srv.initEngines()
 	srv.registerTools()
 	srv.registerResources()
 
 	return srv
+}
+
+func (s *Server) initEngines() {
+	// Set DB para todos los engines
+	agents.SetDB(s.db)
+
+	// Inicializar motores por defecto
+	if err := agents.InitDefaultEngines(); err != nil {
+		fmt.Printf("Warning: Failed to init engines: %v\n", err)
+	}
+
+	// Por defecto, usar TokenSaver
+	if engine, err := agents.GetEngine(agents.EngineTypeParticle); err == nil {
+		s.activeEngine = engine
+		engine.Initialize(context.Background(), "", "")
+		// Inyectar referencia al servidor
+		if engine, ok := engine.(interface{ SetServer(interface{}) }); ok {
+			engine.SetServer(s)
+		}
+	}
+}
+
+// SetActiveEngine cambia el motor activo
+func (s *Server) SetActiveEngine(engineType agents.EngineType) error {
+	engine, err := agents.GetEngine(engineType)
+	if err != nil {
+		return err
+	}
+	s.activeEngine = engine
+	engine.Initialize(context.Background(), "", "")
+	// Inyectar referencia al servidor
+	if engine, ok := engine.(interface{ SetServer(interface{}) }); ok {
+		engine.SetServer(s)
+	}
+	// Registrar herramientas del nuevo motor
+	s.registerEngineTools()
+	return nil
+}
+
+// GetActiveEngine retorna el motor activo
+func (s *Server) GetActiveEngine() agents.AgentEngine {
+	return s.activeEngine
+}
+
+// GetEngineInfo retorna información del motor activo
+func (s *Server) GetEngineInfo() map[string]string {
+	if s.activeEngine == nil {
+		return map[string]string{"status": "no engine"}
+	}
+	return map[string]string{
+		"type":        string(s.activeEngine.Type()),
+		"name":        s.activeEngine.Name(),
+		"description": s.activeEngine.Description(),
+	}
 }
 
 func (s *Server) registerTools() {
@@ -164,12 +222,12 @@ func (s *Server) registerTools() {
 	s.s.AddTool(getSubAgentTaskTool, s.handleGetSubAgentTask)
 	s.s.AddTool(completeSubAgentTool, s.handleCompleteSubAgentTask)
 	s.s.AddTool(mcp.NewTool("switch_agent",
-		mcp.WithDescription("Cambiar entre modo Orquestador y Sub-agente. "+
-			"Útil para cambiar de rol sin cerrar OpenCode."),
+		mcp.WithDescription("Cambiar entre modo Core (contexto denso) y Particle (divulgación progresiva). "+
+			"Usa 'core' para contexto denso, 'particle' para ahorro de tokens."),
 		mcp.WithString("mode",
 			mcp.Required(),
-			mcp.Description("Modo: 'orchestrator' o 'sub_agent'"),
-			mcp.Enum("orchestrator", "sub_agent"),
+			mcp.Description("Modo: 'core' (contexto denso), 'particle' (ahorro tokens), o 'sub_agent'"),
+			mcp.Enum("core", "particle", "sub_agent"),
 		),
 		mcp.WithString("sub_agent_id",
 			mcp.Description("ID del sub-agente (requerido si mode=sub_agent)"),
@@ -234,6 +292,117 @@ func (s *Server) registerTools() {
 		),
 	)
 	s.s.AddTool(commitTaskResultTool, s.handleCommitTaskResult)
+
+	// Herramientas de gestión de Engines
+	s.registerEngineTools()
+}
+
+func (s *Server) registerEngineTools() {
+	// Tool: switch_engine - Cambiar entre motores
+	switchEngineTool := mcp.NewTool("switch_engine",
+		mcp.WithDescription("Cambiar el motor activo (request_saver, token_saver, etc)"),
+		mcp.WithString("engine_type",
+			mcp.Required(),
+			mcp.Description("Tipo de motor: request_saver, token_saver"),
+			mcp.Enum("request_saver", "token_saver"),
+		),
+	)
+	s.s.AddTool(switchEngineTool, s.handleSwitchEngine)
+
+	// Tool: get_engine_info - Ver información del motor activo
+	getEngineInfoTool := mcp.NewTool("get_engine_info",
+		mcp.WithDescription("Obtener información del motor activo"),
+	)
+	s.s.AddTool(getEngineInfoTool, s.handleGetEngineInfo)
+
+	// Tool: list_engines - Listar motores disponibles
+	listEnginesTool := mcp.NewTool("list_engines",
+		mcp.WithDescription("Listar todos los motores disponibles"),
+	)
+	s.s.AddTool(listEnginesTool, s.handleListEngines)
+
+	// Registrar herramientas del motor activo
+	if s.activeEngine != nil {
+		for _, tool := range s.activeEngine.GetTools() {
+			s.registerEngineTool(tool)
+		}
+	}
+}
+
+func (s *Server) registerEngineTool(tool agents.ToolDefinition) {
+	// Create MCP tool
+	mcpTool := mcp.NewTool(tool.Name, mcp.WithDescription(tool.Description))
+
+	// Add all properties as string parameters
+	if props, ok := tool.InputSchema["properties"].(map[string]interface{}); ok {
+		for name := range props {
+			mcpTool = mcp.NewTool(tool.Name,
+				mcp.WithDescription(tool.Description),
+				mcp.WithString(name, mcp.Description(name)),
+			)
+		}
+	}
+
+	// Register with handler
+	s.s.AddTool(mcpTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Build params map from request arguments
+		params := make(map[string]interface{})
+
+		// Try to get arguments - they come as map[string]any in mcp-golang
+		if request.Params.Arguments != nil {
+			switch args := request.Params.Arguments.(type) {
+			case map[string]any:
+				for k, v := range args {
+					params[k] = v
+				}
+			}
+		}
+
+		result, err := tool.Handler(ctx, params)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		if !result.Success {
+			return mcp.NewToolResultError(result.Error), nil
+		}
+		data, _ := json.Marshal(result.Data)
+		return mcp.NewToolResultText(string(data)), nil
+	})
+}
+
+// Handlers de Engine
+func (s *Server) handleSwitchEngine(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	engineType, err := request.RequireString("engine_type")
+	if err != nil {
+		return mcp.NewToolResultError("engine_type es requerido"), nil
+	}
+
+	if err := s.SetActiveEngine(agents.EngineType(engineType)); err != nil {
+		return mcp.NewToolResultError("Error al cambiar engine: " + err.Error()), nil
+	}
+
+	info := s.GetEngineInfo()
+	data, _ := json.Marshal(info)
+	return mcp.NewToolResultText(string(data)), nil
+}
+
+func (s *Server) handleGetEngineInfo(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	info := s.GetEngineInfo()
+	data, _ := json.Marshal(info)
+	return mcp.NewToolResultText(string(data)), nil
+}
+
+func (s *Server) handleListEngines(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	engines := agents.GetAllEngines()
+	result := make(map[string]interface{})
+	for t, e := range engines {
+		result[string(t)] = map[string]string{
+			"name":        e.Name(),
+			"description": e.Description(),
+		}
+	}
+	data, _ := json.Marshal(result)
+	return mcp.NewToolResultText(string(data)), nil
 }
 
 func (s *Server) registerResources() {
@@ -876,6 +1045,18 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 		return mcp.NewToolResultError("mode es requerido: " + err.Error()), nil
 	}
 
+	// =================================================================
+	// CAMBIO DE MOTOR BASADO EN EL MODO DEL AGENTE
+	// =================================================================
+
+	// Modo Core - contexto denso
+	if mode == "core" {
+		s.SetActiveEngine(agents.EngineTypeCore)
+	} else if mode == "particle" {
+		// Modo Particle - ahorro de tokens
+		s.SetActiveEngine(agents.EngineTypeParticle)
+	}
+
 	if mode == "sub_agent" {
 		subAgentID := request.GetString("sub_agent_id", "")
 		if subAgentID == "" {
@@ -901,16 +1082,18 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 
 		task, _ := models.TaskFromJSON(taskData)
 
+		// Obtener info del motor activo
+		engineInfo := s.GetEngineInfo()
+
 		// Banner visual para switch a sub-agente
-		banner := `🎯 **SUB-AGENTE ACTIVO**
+		banner := fmt.Sprintf(`🎯 **SUB-AGENTE ACTIVO**
 
 **ID:** %s | **Tarea:** %s
+**Motor:** %s (%s)
 
-✅ Modo sub-agente activado. Ejecuta tu tarea y usa "commit_world_state".
+✅ Modo sub-agente activado. Ejecuta tu tarea.
 
----`
-
-		banner = fmt.Sprintf(banner, subAgentID, task.Title)
+---`, subAgentID, task.Title, engineInfo["name"], engineInfo["type"])
 
 		type SwitchResponse struct {
 			Success     bool   `json:"success"`
@@ -920,6 +1103,7 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 			Title       string `json:"title,omitempty"`
 			Description string `json:"description,omitempty"`
 			Context     string `json:"context,omitempty"`
+			Engine      string `json:"engine,omitempty"`
 			Message     string `json:"message"`
 		}
 
@@ -931,6 +1115,7 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 			Title:       task.Title,
 			Description: task.Description,
 			Context:     subAgent.Context,
+			Engine:      engineInfo["type"],
 			Message:     "Cambiaste al modo Sub-agente. Ejecuta tu tarea.",
 		}
 
@@ -939,12 +1124,15 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 		return mcp.NewToolResultText(result), nil
 	}
 
-	// Banner para volver a orchestrator
-	banner := `🎼 **MODO ORQUESTADOR**
+	// Banner para volver a planner
+	engineInfo := s.GetEngineInfo()
+	banner := fmt.Sprintf(`🎼 **MODO PLANNER**
 
-✅ Has vuelto al modo Orquestador. Usa "spawn_sub_agent" para nuevas tareas.
+Motor activo: %s (%s)
 
----`
+✅ Has vuelto al modo Planner. Usa "spawn_sub_agent" para nuevas tareas.
+
+---`, engineInfo["name"], engineInfo["type"])
 
 	type SwitchResponse struct {
 		Success bool   `json:"success"`
@@ -954,8 +1142,8 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 
 	response := SwitchResponse{
 		Success: true,
-		Mode:    "orchestrator",
-		Message: "Cambiaste al modo Orquestador. Usa spawn_sub_agent para crear tareas.",
+		Mode:    "core",
+		Message: "Cambiaste al modo Core. Usa spawn_sub_agent para crear tareas.",
 	}
 
 	responseJSON, _ := json.Marshal(response)
@@ -964,7 +1152,7 @@ func (s *Server) handleSwitchAgent(ctx context.Context, request mcp.CallToolRequ
 }
 
 // =============================================================================
-// PLAN_AND_DELEGATE - Herramienta del Orquestador
+// PLAN_AND_DELEGATE - Herramienta del Planner
 // =============================================================================
 
 func (s *Server) handlePlanAndDelegate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

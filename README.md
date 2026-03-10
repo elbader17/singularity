@@ -11,6 +11,37 @@ Singularity is a persistent memory system designed to maximize the autonomy of A
 - **Task Orchestration**: DAG of tasks with dependencies
 - **ISOLATED Sub-Agents**: Each agent receives only its specific context
 - **Zero Ping-Pong**: One request contains all necessary information
+- **Dual Engine System**: Core (dense context) and Particle (progressive disclosure)
+
+## Dual Engine Architecture
+
+Singularity provides two engines optimized for different LLM capabilities:
+
+### Core Engine (Contexto Denso)
+
+- **Context**: Maximum (full context window)
+- **Goal**: Minimize API requests
+- **Best for**: LLMs with excellent Chain of Thought
+- **Rule**: Never writes code - always delegates to sub-agents
+- **Tools**: spawn_sub_agent, get_active_brain, commit_world_state, plan_and_delegate
+
+### Particle Engine (Divulgación Progresiva)
+
+- **Context**: Minimum (<500 tokens)
+- **Goal**: Minimize input tokens
+- **Best for**: LLMs with "context amnesia"
+- **Rule**: Work function by function using AST tools
+- **Tools**: get_file_skeleton, read_function, replace_function, sync_dag_metadata
+
+### Switching Engines
+
+Use `switch_engine` to change between engines:
+
+```json
+{
+  "engine_type": "core"  // or "particle"
+}
+```
 
 ## Installation
 
@@ -73,7 +104,38 @@ Add to your `opencode.jsonc`:
 
 ## MCP Tools
 
-### commit_world_state
+### Engine Management
+
+#### switch_engine
+
+Switches between Core and Particle engines.
+
+```json
+{
+  "engine_type": "core"
+}
+```
+
+#### get_engine_info
+
+Gets current engine information.
+
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "type": "core",
+  "name": "Core Engine",
+  "description": "Minimiza requests API. Ideal para contexto denso."
+}
+```
+
+### State Management
+
+#### commit_world_state
 
 Consolidates state after completing a task. **Mandatory use** when done.
 
@@ -88,7 +150,7 @@ Consolidates state after completing a task. **Mandatory use** when done.
 }
 ```
 
-### get_active_brain
+#### get_active_brain
 
 Gets the current project state at no API cost.
 
@@ -105,7 +167,7 @@ Gets the current project state at no API cost.
 }
 ```
 
-### list_tasks
+#### list_tasks
 
 Lists all tasks with their status.
 
@@ -115,7 +177,7 @@ Lists all tasks with their status.
 }
 ```
 
-### fetch_deep_context
+#### fetch_deep_context
 
 Retrieves historical context. Use only when necessary.
 
@@ -127,7 +189,9 @@ Retrieves historical context. Use only when necessary.
 }
 ```
 
-### spawn_sub_agent
+### Sub-Agent Management
+
+#### spawn_sub_agent
 
 Creates a sub-agent to execute a specific task.
 
@@ -150,7 +214,7 @@ Creates a sub-agent to execute a specific task.
 }
 ```
 
-### get_sub_agent_task
+#### get_sub_agent_task
 
 Gets the assigned task (for sub-agents).
 
@@ -160,25 +224,69 @@ Gets the assigned task (for sub-agents).
 }
 ```
 
-### complete_sub_agent_task
+#### switch_agent
 
-Completes the sub-agent task.
+Switches between Core and Sub-agent mode.
 
 ```json
 {
-  "sub_agent_id": "sub-abc123",
-  "result": "Logout implemented with JWT blacklist"
+  "mode": "sub_agent",  // or "core"
+  "sub_agent_id": "sub-abc123"  // required if mode=sub_agent
 }
 ```
 
-### switch_agent
+### Particle Engine Tools (AST-Based)
 
-Switches between Orchestrator and Sub-agent mode in the same session.
+#### get_file_skeleton
+
+Gets only function/struct signatures (no body).
 
 ```json
 {
-  "mode": "sub_agent",  // or "orchestrator"
-  "sub_agent_id": "sub-abc123"  // required if mode=sub_agent
+  "file_path": "/path/to/file.go"
+}
+```
+
+#### read_function
+
+Reads code of a single function.
+
+```json
+{
+  "file_path": "/path/to/file.go",
+  "function_name": "MyFunction"
+}
+```
+
+#### replace_function
+
+Overwrites a function and saves to BadgerDB.
+
+```json
+{
+  "file_path": "/path/to/file.go",
+  "function_name": "MyFunction",
+  "new_code": "func MyFunction() { ... }"
+}
+```
+
+#### sync_dag_metadata
+
+Synchronizes DAG state JSON.
+
+```json
+{
+  "updates": "{\"task-1\": \"completed\"}"
+}
+```
+
+#### compress_history_key
+
+Compresses history into summary.
+
+```json
+{
+  "session_id": "ses-123"
 }
 ```
 
@@ -191,12 +299,12 @@ Switches between Orchestrator and Sub-agent mode in the same session.
 │  │    Brain      │  │    Archive    │  │   Tasks    │    │
 │  │   (Active)    │  │    (Deep)     │  │   (DAG)    │    │
 │  └───────────────┘  └───────────────┘  └────────────┘    │
+│         │                   │                   │          │
+│  ┌──────┴──────┐   ┌──────┴──────┐    ┌──────┴──────┐    │
+│  │Core Engine   │   │Particle Eng │    │  Sub-agents │    │
+│  │(Dense Context)│  │(AST Tools)  │    │             │    │
+│  └─────────────┘    └─────────────┘    └─────────────┘    │
 └──────────────────────────────────────────────────────────┘
-          ▲                     ▲                    ▲
-          │                     │                    │
-    ┌─────┴─────-┐        ┌─────┴─────┐        ┌─────┴─────┐
-    │Orchestrator│        │ Sub-agent │        │ Sub-agent │
-    └───────────-┘        └───────────┘        └───────────┘
 ```
 
 ### Components
@@ -206,27 +314,40 @@ Switches between Orchestrator and Sub-agent mode in the same session.
 | `internal/storage` | BadgerDB for persistence |
 | `internal/mcp` | MCP server + tools |
 | `internal/models` | Data structures |
+| `internal/agents` | Engine implementations (Core/Particle) |
 | `internal/protocol` | Context injection |
 
 ## Workflow Pattern
 
-### Orchestrator Flow
+### Core Agent Flow (Dense Context)
 
 ```
-1. get_active_brain()     → View current state
-2. list_tasks()           → View pending tasks
-3. spawn_sub_agent()     → Create task for sub-agent
-4. [WAIT]
-5. commit_world_state()  → Consolidate results
+1. switch_engine("core")       → Initialize Core engine
+2. get_active_brain()          → View current state
+3. spawn_sub_agent()           → Create task for sub-agent
+4. switch_agent(mode="sub_agent", sub_agent_id="...")
+5. [WAIT - Sub-agent works autonomously]
+6. switch_agent(mode="core")   → Core reactivated when done
+7. commit_world_state()        → Consolidate results
 ```
 
 ### Sub-agent Flow
 
 ```
-1. get_sub_agent_task()   → Get my task and context
+1. get_sub_agent_task()        → Get my task and context
 2. [WORK]
-3. commit_world_state()   → Consolidate my work
-4. complete_sub_agent_task() → Report to orchestrator
+3. commit_world_state()        → Consolidate my work
+4. switch_agent(mode="core")   → Return to Core
+```
+
+### Particle Agent Flow (Progressive Disclosure)
+
+```
+1. switch_engine("particle")   → Initialize Particle engine
+2. get_file_skeleton("file.go")→ Get only signatures
+3. read_function("file.go", "FuncName") → Get specific function
+4. replace_function(...)       → Modify function
+5. [Repeat for each function]
 ```
 
 ## Core Rules
@@ -236,28 +357,31 @@ Switches between Orchestrator and Sub-agent mode in the same session.
    - Don't do exploratory ping-pong - deduce and act
 
 2. **Strict isolation**
-   - Orchestrator only sees high-level summaries
+   - Core only sees high-level summaries
    - Sub-agent only sees its specific context
+   - Particle works function-by-function
 
 3. **Mandatory consolidation**
    - Always use `commit_world_state` when done
    - Include code, decisions, learnings
 
+4. **No polling for sub-agents**
+   - After `switch_agent` to sub-agent mode, the system automatically reactivates Core when done
+   - Don't use `get_sub_agent_task` repeatedly
+
 ## Session Example
 
 ```bash
-# Session 1 - Orchestrator
+# Session 1 - Core Agent
 $ opencode .
 
 > What's the project state?
 [Uses get_active_brain]
 
 > Create a task to implement login
-[Uses spawn_sub_agent]
+[Uses spawn_sub_agent + switch_agent]
 
-# Session 2 - Sub-agent (new terminal)
-$ opencode .
-
+# Session 2 - Sub-agent (automatically activated)
 > My task is...
 [Uses get_sub_agent_task]
 
@@ -265,11 +389,11 @@ $ opencode .
 [Works]
 
 > Done
-[Uses commit_world_state + complete_sub_agent_task]
+[Uses commit_world_state + switch_agent(mode="core")]
 
-# Session 1 - Orchestrator
-> How did it go?
-[Uses get_active_brain]
+# Session 1 - Core Agent (automatically reactivated)
+> Task completed successfully
+[Reports to user]
 ```
 
 ## Development
