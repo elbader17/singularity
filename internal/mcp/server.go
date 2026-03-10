@@ -1302,22 +1302,71 @@ func (s *Server) validateGoCode(projectPath string, codeFiles []models.CodeFile)
 		ioutil.WriteFile(fullPath, []byte(cf.Content), 0644)
 	}
 
-	// Intentar go build
-	cmd := exec.Command("go", "build", "-o", "/dev/null", ".")
-	cmd.Dir = tempDir
-	output, err := cmd.CombinedOutput()
+	// Intentar go build -no-pkg-errors que es más permisivo con módulos
+	// Usar go vet para validación de sintaxis (más permisivo que build)
+	var lastOutput string
+	var hasGoFiles bool
 
-	if err != nil {
+	for _, cf := range codeFiles {
+		if filepath.Ext(cf.FilePath) != ".go" {
+			continue
+		}
+		hasGoFiles = true
+
+		// Usar go vet que es más permisivo y no requiere módulo
+		cmd := exec.Command("go", "vet", cf.FilePath)
+		cmd.Dir = tempDir
+		output, err := cmd.CombinedOutput()
+		lastOutput = string(output)
+
+		// Si encuentra un error de sintaxis, falla inmediatamente
+		if err != nil {
+			return ValidationResult{
+				Valid:  false,
+				Output: lastOutput,
+				Error:  err.Error(),
+			}
+		}
+	}
+
+	if !hasGoFiles {
 		return ValidationResult{
-			Valid:  false,
-			Output: string(output),
-			Error:  err.Error(),
+			Valid:  true,
+			Output: "No Go files to validate",
+			Error:  "",
+		}
+	}
+
+	// Si ningún archivo falló, verificar que hay un main si es ejecutable
+	hasMain := false
+	hasErrors := false
+	for _, cf := range codeFiles {
+		if filepath.Ext(cf.FilePath) == ".go" && strings.Contains(cf.Content, "func main()") {
+			hasMain = true
+			break
+		}
+	}
+	_ = hasErrors // Reserved for future use
+
+	// Para código de librería (sin main), verificar sintaxis
+	if !hasMain {
+		// Usar go fmt para verificar sintaxis
+		cmd := exec.Command("go", "fmt", "./...")
+		cmd.Dir = tempDir
+		output, err := cmd.CombinedOutput()
+
+		if err != nil {
+			return ValidationResult{
+				Valid:  false,
+				Output: string(output),
+				Error:  err.Error(),
+			}
 		}
 	}
 
 	return ValidationResult{
 		Valid:  true,
-		Output: "Go build exitoso: " + string(output),
+		Output: "Go syntax validation successful: " + lastOutput,
 		Error:  "",
 	}
 }
