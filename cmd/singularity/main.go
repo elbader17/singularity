@@ -30,6 +30,9 @@ func main() {
 		case "restart":
 			runRestart()
 			return
+		case "update":
+			runUpdate()
+			return
 		case "help", "--help", "-h":
 			printHelp()
 			return
@@ -156,6 +159,76 @@ func runRestart() {
 	}
 }
 
+func runUpdate() {
+	fmt.Println("⬆️  Buscando actualizaciones...")
+
+	// 1. Check if update script exists and run it
+	updateScript := "./update.sh"
+	if _, err := os.Stat(updateScript); err == nil {
+		fmt.Println("📜 Ejecutando script de actualización...")
+		cmd := exec.Command("bash", updateScript)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error al ejecutar update.sh: %v\n", err)
+		}
+	}
+
+	// 2. Pull latest RELEASE commit
+	fmt.Println("📥 Pulling último commit RELEASE...")
+	pullCmd := exec.Command("git", "pull", "origin", "main")
+	pullCmd.Stdout = os.Stdout
+	pullCmd.Stderr = os.Stderr
+	if err := pullCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error en git pull: %v\n", err)
+	}
+
+	// 3. Fetch and checkout latest RELEASE commit
+	fmt.Println("📦 Fetching y cambiando al último RELEASE...")
+	fetchCmd := exec.Command("git", "fetch", "origin")
+	fetchCmd.Stdout = os.Stdout
+	fetchCmd.Stderr = os.Stderr
+	fetchCmd.Run()
+
+	// Find latest RELEASE commit
+	logCmd := exec.Command("git", "log", "--format=%H %s", "-n", "1", "--grep=RELEASE", "origin/main")
+	logCmd.Stdout = os.Stdout
+	logCmd.Stderr = os.Stderr
+	logOutput, err := logCmd.Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error buscando commit RELEASE: %v\n", err)
+		fmt.Println("⚠️  Continuando con build actual...")
+	} else {
+		parts := strings.Fields(string(logOutput))
+		if len(parts) >= 1 {
+			releaseCommit := parts[0]
+			fmt.Printf("📌 Cambiando a commit: %s\n", releaseCommit[:8])
+			checkoutCmd := exec.Command("git", "checkout", releaseCommit)
+			checkoutCmd.Stdout = os.Stdout
+			checkoutCmd.Stderr = os.Stderr
+			if err := checkoutCmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error en checkout: %v\n", err)
+			}
+		}
+	}
+
+	// 4. Build
+	fmt.Println("🔨 Building...")
+	buildCmd := exec.Command("go", "build", "-o", "singularity", "./cmd/singularity")
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error en build: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("✅ Build completado")
+
+	// 5. Restart
+	fmt.Println("🔄 Reiniciando servidor...")
+	runRestart()
+}
+
 func printHelp() {
 	fmt.Print(`Singularity - Motor de Memoria de Estado
 
@@ -164,6 +237,7 @@ Uso:
   singularity -data     Iniciar con directorio de datos personalizado
   singularity init      Instalar en OpenCode (TUI interactiva)
   singularity restart   Reiniciar servidor
+  singularity update    Actualizar a la última versión RELEASE
   singularity help      Mostrar esta ayuda
 
 Opciones:
