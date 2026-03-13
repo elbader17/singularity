@@ -169,34 +169,80 @@ Eres el orquestador supremo. Tu trabajo es DELEGAR todo el trabajo a sub-agentes
 - NUNCA leas archivos directamente  
 - SIEMPRE delega a sub-agentes
 
+## FLUJO OBLIGATORIO (VERIFICACIÓN DE CONTEXTO)
+Antes de HACER CUALQUIER COSA, SIEMPRE debes:
+
+1. get_active_brain → Ver estado actual del proyecto
+2. list_tasks → Ver qué tareas hay pendientes
+
+## Lógica de Delegación
+- Si hay tareas "pending" → delegar con spawn_sub_agent
+- Si hay tareas "in_progress" → verificar con get_sub_agent_task
+- Si hay tareas "completed" → consolidar con commit_world_state
+- NUNCA hacer trabajo directamente si hay tareas pendientes
+
 ## Herramientas de Delegación
-1. Usa get_active_brain para ver el estado actual
-2. Usa list_tasks para ver tareas pendientes
-3. Usa spawn_sub_agent para crear sub-agentes que:
-   - Lean archivos necesarios
-   - Escriban el código
-   - Ejecuten comandos
+1. spawn_sub_agent → Crear sub-agente (Hacedor)
+2. get_sub_agent_task → Obtener contexto del sub-agente
+3. complete_sub_agent_task → Completar trabajo del sub-agente
+4. commit_world_state → Consolidar resultados
+5. commit_task_result → Validar código (activa Judge)
 
-## Flujo de Trabajo
-1. get_active_brain → Ver estado actual
-2. list_tasks → Ver qué falta hacer
-3. spawn_sub_agent → Delegar trabajo
-4. commit_task_result → Consolidar resultado
+## PATRÓN DE PUNTEROS DE CONTEXTO
+Para ver resúmenes de archivos leídos por sub-agentes (SIN leer el contenido):
 
-Cero Ping-Pong: Una sola llamada por tarea.`
+1. list_contexts → Ver TODOS los resúmenes de contextos guardados
+2. get_context_pointer → Ver ubicación de un contexto específico
+
+NUNCA leas archivos directamente. Los sub-agentes leen, guardan en DB y pasan resúmenes.
+
+## Ejemplo de flujo correcto:
+- Usuario pide una tarea
+- get_active_brain → ver estado
+- list_tasks → ver tareas pendientes
+- list_contexts → ver si hay contextos previos
+- spawn_sub_agent → delegar (pasando punteros si existen)
+- Esperar resultado del sub-agente
+- commit_world_state → consolidar
+
+## Ejemplo de flujo incorrecto (PROHIBIDO):
+- Usuario pide una tarea
+- Empezar a escribir código directamente ❌
+- Leer archivos directamente con Read tool ❌
+- Olvidar revisar estado ❌`
 }
 
 func (e *RequestSaverEngine) GetSubAgentPrompt() string {
 	return `Eres un Sub-agente con debate interno: ARQUITECTO → PROGRAMADOR → QA.
 
-## Tu Trabajo
-- Lee los archivos que necesites
-- Escribe el código necesario
-- Ejecuta comandos de prueba
+## PATRÓN DE CONTEXTO (PUNTEROS)
+Tu trabajo sigue el patrón de CONTEXTO → PUNTERO → RESUMEN:
+
+### Flujo de Lectura (cuando necesitas leer archivos):
+1. Usa read_file_context para leer archivos
+2. Esta herramienta GUARDA el contenido completo en BadgerDB
+3. Devuelve un RESUMEN BREVÍSIMO (1-2 líneas) + la UBICACIÓN (puntero)
+4. NUNCA devuelvas el contenido completo al orquestador
+
+### Flujo de Escritura (cuando necesitas escribir código):
+1. Escribe el código necesario
+2. Usa commit_task_result para guardar (activa Judge)
+3. El código se valida y guarda automáticamente
+
+## Regla de Oro: Contexto Denso, Respuesta Ligera
+- Lee todo lo que necesites en los archivos
+- GUARDA todo en la DB
+- Al orquestador SOLO le das: resumen + puntero
+
+## Ejemplo de flujo correcto:
+- Necesitas ver código de un archivo
+- read_file_context("./internal/models/state.go")
+- Obtienes: "Modelo de estado con Task, SubAgent, WorldState. DB: context:file:internal/models/state.go"
+- Pasas este resumen + puntero al orquestador
+- Otro sub-agente puede pedir ese contexto usando el puntero
 
 ## Final
 Usa commit_task_result para guardar tu trabajo (activa Judge)`
-
 }
 
 func (e *RequestSaverEngine) Initialize(ctx context.Context, sessionID, projectPath string) error {
@@ -225,6 +271,18 @@ func (e *RequestSaverEngine) SetServer(server interface{}) {
 func (e *RequestSaverEngine) GetTools() []ToolDefinition {
 	return []ToolDefinition{
 		// === HERRAMIENTAS DE DELEGACIÓN ===
+		{
+			Name: "check_delegation_status", Description: "VERIFICACIÓN OBLIGATORIA: Revisa si hay tareas pendientes que deben ser delegadas. SIEMPRE llama esta herramienta ANTES de hacer cualquier trabajo directo.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"session_id":   map[string]interface{}{"type": "string", "description": "ID de la sesión actual"},
+					"project_path": map[string]interface{}{"type": "string", "description": "Ruta del proyecto"},
+				},
+				"required": []string{"session_id", "project_path"},
+			},
+			Handler: e.handleCheckDelegationStatus,
+		},
 		{
 			Name: "spawn_sub_agent", Description: "Crear un sub-agente para ejecutar una tarea específica. El orquestador usa esto para delegar trabajo.",
 			InputSchema: map[string]interface{}{
@@ -320,6 +378,43 @@ func (e *RequestSaverEngine) GetTools() []ToolDefinition {
 				"required": []string{"sub_agent_id", "project_path", "session_id", "task_id", "code_files", "summary"},
 			},
 			Handler: e.handleCommitTaskResult,
+		},
+		// === HERRAMIENTAS DE CONTEXTO (PUNTEROS) ===
+		{
+			Name: "read_file_context", Description: "Lee un archivo, GUARDA contenido completo en DB, devuelve resumen + puntero. Para sub-agentes que necesitan leer código.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"file_path":    map[string]interface{}{"type": "string", "description": "Ruta del archivo a leer"},
+					"session_id":   map[string]interface{}{"type": "string", "description": "ID de sesión"},
+					"project_path": map[string]interface{}{"type": "string", "description": "Ruta del proyecto"},
+				},
+				"required": []string{"file_path", "session_id", "project_path"},
+			},
+			Handler: e.handleReadFileContext,
+		},
+		{
+			Name: "get_context_pointer", Description: "Obtiene la ubicación (puntero) de un contexto guardado en DB sin leer el contenido. Para el orquestador.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"file_path":  map[string]interface{}{"type": "string", "description": "Ruta del archivo"},
+					"session_id": map[string]interface{}{"type": "string", "description": "ID de sesión"},
+				},
+				"required": []string{"file_path", "session_id"},
+			},
+			Handler: e.handleGetContextPointer,
+		},
+		{
+			Name: "list_contexts", Description: "Lista todos los contextos guardados en DB para esta sesión. Muestra resúmenes sin contenido.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"session_id": map[string]interface{}{"type": "string", "description": "ID de sesión"},
+				},
+				"required": []string{"session_id"},
+			},
+			Handler: e.handleListContexts,
 		},
 	}
 }
@@ -642,6 +737,239 @@ func (e *RequestSaverEngine) handleSwitchAgent(ctx context.Context, params map[s
 		"sub_agent_id": subAgentID,
 		"message":      "Cambiaste al modo " + mode,
 	}), nil
+}
+
+// handleCheckDelegationStatus - Verificación obligatoria de delegación
+// Esta herramienta fuerza al agente Core a verificar si hay tareas pendientes antes de actuar
+func (e *RequestSaverEngine) handleCheckDelegationStatus(ctx context.Context, params map[string]interface{}) (*models.ToolResult, error) {
+	sessionID, _ := params["session_id"].(string)
+	projectPath, _ := params["project_path"].(string)
+
+	if e.db == nil {
+		return ErrorResult("No database connection"), nil
+	}
+
+	// Obtener todas las tareas
+	tasksMap, _ := e.db.GetWithPrefix(storage.TaskPrefix())
+
+	var pendingTasks []string
+	var inProgressTasks []string
+	var completedTasks []string
+
+	for _, data := range tasksMap {
+		var task models.Task
+		if json.Unmarshal(data, &task) == nil {
+			switch task.Status {
+			case "pending":
+				pendingTasks = append(pendingTasks, task.Title)
+			case "in_progress":
+				inProgressTasks = append(inProgressTasks, task.Title)
+			case "completed":
+				completedTasks = append(completedTasks, task.Title)
+			}
+		}
+	}
+
+	// Construir respuesta con recordatorio de delegación
+	hasPending := len(pendingTasks) > 0
+	hasInProgress := len(inProgressTasks) > 0
+
+	message := ""
+	actionRequired := ""
+
+	if hasPending {
+		message = "⚠️Hay TAREAS PENDIENTES que deben ser delegadas a sub-agentes."
+		actionRequired = "USA spawn_sub_agent para delegar cada tarea pendiente. NO hagas el trabajo directamente."
+	} else if hasInProgress {
+		message = "⚠️Hay TAREAS EN PROGRESO. Verifica su estado con get_sub_agent_task."
+		actionRequired = "Usa get_sub_agent_task para ver el progreso de las tareas activas."
+	} else {
+		message = "✅ No hay tareas pendientes. Puedes crear nuevas tareas si el usuario lo requiere."
+		actionRequired = "Usa plan_and_delegate si el usuario pide una nueva tarea."
+	}
+
+	return SuccessResult(map[string]interface{}{
+		"session_id":         sessionID,
+		"project_path":       projectPath,
+		"pending_count":      len(pendingTasks),
+		"in_progress":        len(inProgressTasks),
+		"completed_count":    len(completedTasks),
+		"pending_titles":     pendingTasks,
+		"in_progress_titles": inProgressTasks,
+		"message":            message,
+		"action_required":    actionRequired,
+		"delegate_flag":      hasPending || hasInProgress, // Flag para obligar al agente a delegar
+	}), nil
+}
+
+// handleReadFileContext - Lee archivo, guarda en DB, devuelve resumen + puntero
+// Implementa el patrón: CONTENIDO COMPLETO → DB | RESUMEN + PUNTERO → ORQUESTADOR
+func (e *RequestSaverEngine) handleReadFileContext(ctx context.Context, params map[string]interface{}) (*models.ToolResult, error) {
+	filePath, _ := params["file_path"].(string)
+	sessionID, _ := params["session_id"].(string)
+	projectPath, _ := params["project_path"].(string)
+
+	if filePath == "" {
+		return ErrorResult("file_path es requerido"), nil
+	}
+
+	_ = projectPath // Reservado para validación de ruta de proyecto
+
+	if e.db == nil {
+		return ErrorResult("No database connection"), nil
+	}
+
+	// Leer el archivo completo
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return ErrorResult("Error al leer archivo: " + err.Error()), nil
+	}
+
+	// Generar un resumen breve (máximo 2-3 líneas)
+	summary := generateBriefSummary(string(content), filePath)
+
+	// Guardar contenido completo en DB con key específica
+	contextKey := storage.ContextFileKey(sessionID, filePath)
+	e.db.Set(contextKey, content)
+
+	// Guardar metadata del contexto (resumen, timestamp, etc.)
+	contextMeta := models.ContextMetadata{
+		FilePath:  filePath,
+		SessionID: sessionID,
+		Summary:   summary,
+		Size:      len(content),
+		SavedAt:   time.Now(),
+	}
+	metaData, _ := json.Marshal(contextMeta)
+	metaKey := storage.ContextMetaKey(sessionID, filePath)
+	e.db.Set(metaKey, metaData)
+
+	// Devolver SOLO el resumen + puntero (no el contenido)
+	return SuccessResult(map[string]interface{}{
+		"summary":       summary,
+		"context_key":   contextKey,
+		"file_path":     filePath,
+		"size_bytes":    len(content),
+		"message":       "Contenido guardado en DB. Usa context_key para recuperar.",
+		"for_sub_agent": "El orquestador recibió: '" + summary + "'. El contenido completo está en DB: " + contextKey,
+	}), nil
+}
+
+// handleGetContextPointer - Obtiene la ubicación de un contexto sin leer el contenido
+// Para que el orquestador pueda pasar punteros a otros sub-agentes
+func (e *RequestSaverEngine) handleGetContextPointer(ctx context.Context, params map[string]interface{}) (*models.ToolResult, error) {
+	filePath, _ := params["file_path"].(string)
+	sessionID, _ := params["session_id"].(string)
+
+	if filePath == "" || sessionID == "" {
+		return ErrorResult("file_path y session_id son requeridos"), nil
+	}
+
+	if e.db == nil {
+		return ErrorResult("No database connection"), nil
+	}
+
+	// Verificar si existe el contexto
+	metaKey := storage.ContextMetaKey(sessionID, filePath)
+	metaData, err := e.db.Get(metaKey)
+	if err != nil {
+		return ErrorResult("Contexto no encontrado para: " + filePath), nil
+	}
+
+	var meta models.ContextMetadata
+	if json.Unmarshal(metaData, &meta) == nil {
+		return SuccessResult(map[string]interface{}{
+			"file_path":            filePath,
+			"context_key":          storage.ContextFileKey(sessionID, filePath),
+			"summary":              meta.Summary,
+			"size_bytes":           meta.Size,
+			"saved_at":             meta.SavedAt.Format(time.RFC3339),
+			"exists":               true,
+			"pointer_for_subagent": "DB:context:" + sessionID + ":" + filePath,
+		}), nil
+	}
+
+	return ErrorResult("Error al leer metadata del contexto"), nil
+}
+
+// handleListContexts - Lista todos los contextos guardados (resúmenes sin contenido)
+func (e *RequestSaverEngine) handleListContexts(ctx context.Context, params map[string]interface{}) (*models.ToolResult, error) {
+	sessionID, _ := params["session_id"].(string)
+
+	if sessionID == "" {
+		return ErrorResult("session_id es requerido"), nil
+	}
+
+	if e.db == nil {
+		return ErrorResult("No database connection"), nil
+	}
+
+	// Buscar todos los contextos de esta sesión
+	prefix := storage.ContextMetaPrefix() + sessionID
+	contextsMap, _ := e.db.GetWithPrefix(prefix)
+
+	var contexts []map[string]interface{}
+	for key, data := range contextsMap {
+		var meta models.ContextMetadata
+		if json.Unmarshal(data, &meta) == nil {
+			contexts = append(contexts, map[string]interface{}{
+				"file_path":  meta.FilePath,
+				"summary":    meta.Summary,
+				"size_bytes": meta.Size,
+				"saved_at":   meta.SavedAt.Format(time.RFC3339),
+				"pointer":    "DB:context:" + sessionID + ":" + meta.FilePath,
+			})
+		}
+		_ = key // evitar error de variable no usada
+	}
+
+	return SuccessResult(map[string]interface{}{
+		"session_id": sessionID,
+		"contexts":   contexts,
+		"total":      len(contexts),
+		"message":    "Lista de contextos. Usa get_context_pointer para ver detalles.",
+	}), nil
+}
+
+// generateBriefSummary crea un resumen de máximo 2-3 líneas del contenido
+func generateBriefSummary(content, filePath string) string {
+	lines := strings.Split(content, "\n")
+
+	// Para archivos pequeños, einfach el contenido
+	if len(lines) <= 10 {
+		if len(content) > 200 {
+			return strings.TrimSpace(content[:200]) + "..."
+		}
+		return strings.TrimSpace(content)
+	}
+
+	// Para archivos grandes, extraer información clave
+	var summaryLines []string
+	summaryLines = append(summaryLines, "Archivo: "+filePath)
+
+	// Detectar package
+	for _, line := range lines[:5] {
+		if strings.HasPrefix(line, "package ") {
+			summaryLines = append(summaryLines, line)
+			break
+		}
+	}
+
+	// Contar funciones/structs
+	funcCount := 0
+	structCount := 0
+	for _, line := range lines {
+		if strings.HasPrefix(line, "func ") {
+			funcCount++
+		}
+		if strings.HasPrefix(line, "type ") && strings.Contains(line, "struct") {
+			structCount++
+		}
+	}
+
+	summaryLines = append(summaryLines, fmt.Sprintf("Funciones: %d, Estructuras: %d, Total líneas: %d", funcCount, structCount, len(lines)))
+
+	return strings.Join(summaryLines, " | ")
 }
 
 // Helper function

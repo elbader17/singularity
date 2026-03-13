@@ -258,3 +258,12 @@ func TaskResultFromJSON(data []byte) (*TaskResult, error) {
 	err := json.Unmarshal(data, &tr)
 	return &tr, err
 }
+
+// ContextMetadata - Metadata de un contexto guardado en DB
+type ContextMetadata struct {
+	FilePath  string    `json:"file_path"`
+	SessionID string    `json:"session_id"`
+	Summary   string    `json:"summary"`
+	Size      int       `json:"size_bytes"`
+	SavedAt   time.Time `json:"saved_at"`
+}

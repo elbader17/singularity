@@ -19,6 +19,7 @@ const (
 	compressedHistoryPrefix = "ch:"       // Historial comprimido
 	codeSkeletonPrefix      = "skeleton:" // Esqueletos de archivos (para AST)
 	functionCachePrefix     = "fncache:"  // Cache de funciones
+	contextPrefix           = "context:"  // Contextos de archivos subidos a DB
 )
 
 type BadgerDB struct {
@@ -144,4 +145,16 @@ func CompressedHistoryKey(sessionID string) string { return compressedHistoryPre
 func CodeSkeletonKey(filePath string) string       { return codeSkeletonPrefix + filePath }
 func FunctionCacheKey(filePath, fnName string) string {
 	return functionCachePrefix + filePath + ":" + fnName
+}
+
+// Context keys - Para el patrón de Punteros de Contexto
+func ContextPrefix() string { return contextPrefix }
+func ContextFileKey(sessionID, filePath string) string {
+	return contextPrefix + "file:" + sessionID + ":" + filePath
+}
+func ContextMetaKey(sessionID, filePath string) string {
+	return contextPrefix + "meta:" + sessionID + ":" + filePath
+}
+func ContextMetaPrefix() string {
+	return contextPrefix + "meta:"
 }
